@@ -1,6 +1,6 @@
 [build]
-  command = "cd web && npm run build"
-  publish = "web/dist"
+  command = "cd ../web && npm run build"
+  publish = "../web/dist"
   functions = "netlify/functions"
 
 [functions]
