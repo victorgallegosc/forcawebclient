@@ -1,4 +1,4 @@
-# API routes should not be redirected
-/api/*  /.netlify/functions/:splat  200
+# API routes should go to the api function
+/api/*  /.netlify/functions/api  200
 # All other routes go to index.html for SPA routing
 /*    /index.html   200
