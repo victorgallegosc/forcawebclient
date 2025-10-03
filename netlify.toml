@@ -1,7 +1,7 @@
 [build]
-  command = "cd ../web && rm -rf node_modules package-lock.json && npm install && npm run build"
-  publish = "../web/dist"
-  functions = "netlify/functions"
+  command = "cd web && rm -rf node_modules package-lock.json && npm install && npm run build"
+  publish = "web/dist"
+  functions = "server/netlify/functions"
 
 [functions]
   node_bundler = "esbuild"
