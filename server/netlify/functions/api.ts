@@ -5,5 +5,5 @@ import app from '../../dist/index.js';
 const serverlessHandler = serverless(app);
 
 export const handler: Handler = async (event, context) => {
-  return serverlessHandler(event, context);
+  return await serverlessHandler(event, context) as any;
 };
