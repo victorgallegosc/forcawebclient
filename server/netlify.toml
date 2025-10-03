@@ -1,0 +1,21 @@
+[build]
+  command = "npm run build"
+  publish = "web/dist"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = [
+    "express",
+    "cors",
+    "dotenv",
+    "cheerio",
+    "iconv-lite",
+    "undici",
+    "serverless-http"
+  ]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api"
+  status = 200

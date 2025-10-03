@@ -678,7 +678,10 @@ app.get('/api/posiciones-parsed/:dts', async (req, res) => {
         });
     }
 });
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+if (process.env.NETLIFY !== 'true') {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
+exports.default = app;
 //# sourceMappingURL=index.js.map
