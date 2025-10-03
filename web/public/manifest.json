@@ -1,10 +1,11 @@
 {
   "name": "Forca Cliente",
   "short_name": "Forca",
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1976d2",
+  "scope": "/",
   "icons": [
     {
       "src": "icon.png",
