@@ -1303,6 +1303,7 @@ export default function App() {
 
     const handleTeamInfoRequest = React.useCallback(async (team: ZioneTeam, context: TeamClickContext) => {
         const teamId = getTeamId(team);
+        
         if (!teamId) {
             setTeamInfoState({
                 open: true,
@@ -1328,20 +1329,89 @@ export default function App() {
         });
 
         try {
-            const response = await client.getTeamInfo(dtsValue, teamId, {
-                torID: scheduleMeta?.ids?.torID || undefined,
-                divID: scheduleMeta?.ids?.divID || undefined,
-                gpoID: scheduleMeta?.ids?.gpoID || undefined
-            });
+            // For team-schedule context (rol por equipo), use the reliable general schedule approach
+            // instead of the buggy team-specific endpoint that has incorrect IDs
+            if (context.source === 'team-schedule') {
+                // Get the general schedule data which has correct team IDs
+                const generalSchedule = await client.getRolJuegos(dtsValue, 
+                    scheduleMeta?.ids?.torID || '', 
+                    scheduleMeta?.ids?.divID || '', 
+                    scheduleMeta?.ids?.gpoID || '', 
+                    { v: '1' }
+                );
+                
+                // Find the specific team in the general schedule data
+                let foundTeam: ZioneTeam | null = null;
+                let foundTeamId: string | null = null;
+                
+                // Search through all matches to find a team with matching name (NOT ID, since IDs are wrong)
+                for (const matchday of generalSchedule.matchdays) {
+                    for (const match of matchday.matches) {
+                        // Check both team1 and team2
+                        for (const matchTeam of [match.team1, match.team2]) {
+                            if (matchTeam && matchTeam.name && team.name) {
+                                // Only match by name, ignore IDs since they're corrupted in team-schedule context
+                                const teamNameMatch = 
+                                    matchTeam.name.toLowerCase() === team.name.toLowerCase() ||
+                                    matchTeam.name.toLowerCase().includes(team.name.toLowerCase()) ||
+                                    team.name.toLowerCase().includes(matchTeam.name.toLowerCase());
+                                
+                                if (teamNameMatch) {
+                                    foundTeam = matchTeam;
+                                    foundTeamId = getTeamId(matchTeam);
+                                    break;
+                                }
+                            }
+                        }
+                        if (foundTeam) break;
+                    }
+                    if (foundTeam) break;
+                }
+                
+                if (foundTeam && foundTeamId) {
+                    // Use the correct team ID from general schedule
+                    const response = await client.getTeamInfo(dtsValue, foundTeamId, {
+                        torID: scheduleMeta?.ids?.torID || undefined,
+                        divID: scheduleMeta?.ids?.divID || undefined,
+                        gpoID: scheduleMeta?.ids?.gpoID || undefined
+                    });
+                    
+                    setTeamInfoState(prev => ({
+                        ...prev,
+                        loading: false,
+                        data: response,
+                        error: null
+                    }));
+                } else {
+                    // Fall back to original method if team not found
+                    const response = await client.getTeamInfo(dtsValue, teamId, {
+                        torID: scheduleMeta?.ids?.torID || undefined,
+                        divID: scheduleMeta?.ids?.divID || undefined,
+                        gpoID: scheduleMeta?.ids?.gpoID || undefined
+                    });
+                    
+                    setTeamInfoState(prev => ({
+                        ...prev,
+                        loading: false,
+                        data: response,
+                        error: null
+                    }));
+                }
+            } else {
+                // For other contexts (schedule, results), use the normal method
+                const response = await client.getTeamInfo(dtsValue, teamId, {
+                    torID: scheduleMeta?.ids?.torID || undefined,
+                    divID: scheduleMeta?.ids?.divID || undefined,
+                    gpoID: scheduleMeta?.ids?.gpoID || undefined
+                });
 
-            console.log('Team info response:', response);
-
-            setTeamInfoState(prev => ({
-                ...prev,
-                loading: false,
-                data: response,
-                error: null
-            }));
+                setTeamInfoState(prev => ({
+                    ...prev,
+                    loading: false,
+                    data: response,
+                    error: null
+                }));
+            }
         } catch (teamError) {
             const message = teamError instanceof Error
                 ? teamError.message

@@ -467,6 +467,7 @@ app.get('/api/team-info', async (req, res) => {
   try {
     const dts = req.query.dts as string;
     const teamId = req.query.teamId as string;
+    const teamName = req.query.teamName as string;
     const m = (req.query.m as string) || '1';
     const torID = req.query.torID as string | undefined;
     const divID = req.query.divID as string | undefined;
@@ -476,15 +477,62 @@ app.get('/api/team-info', async (req, res) => {
       return res.status(400).json({ error: 'Parameters dts and teamId are required' });
     }
 
+    // Use fresh cookies for each team info request to avoid session conflicts
+    let jar: CookieJar = { cookies: [] };
+
+    // Clear any existing session by going to a neutral page
+    const neutralUrl = buildUrl('/', { dts });
+    await fetchWithCookies(neutralUrl, {
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Accept-Language': 'es-MX,es-419;q=0.9,es;q=0.8,en;q=0.7',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'DNT': '1',
+        'Pragma': 'no-cache',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
+      }
+    }, jar);
+
     const buildTeamUrl = (section: string) => buildUrl('/info.equipo.asp', { dts, m: section, e: teamId });
 
     let teamUrl = buildTeamUrl(m || '1');
-    let teamResponse = await fetchWithCookies(teamUrl);
+    
+    // Add a small delay to avoid potential rate limiting or session conflicts
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    let teamResponse = await fetchWithCookies(teamUrl, {
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Accept-Language': 'es-MX,es-419;q=0.9,es;q=0.8,en;q=0.7',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'DNT': '1',
+        'Pragma': 'no-cache',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
+      }
+    }, jar);
 
     if (teamResponse.status !== 200 && m !== '1') {
       // Retry with the default section (m=1) when an alternative section fails
       teamUrl = buildTeamUrl('1');
-      teamResponse = await fetchWithCookies(teamUrl);
+      teamResponse = await fetchWithCookies(teamUrl, {
+        headers: {
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+          'Accept-Encoding': 'gzip, deflate, br, zstd',
+          'Accept-Language': 'es-MX,es-419;q=0.9,es;q=0.8,en;q=0.7',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+          'DNT': '1',
+          'Pragma': 'no-cache',
+          'Upgrade-Insecure-Requests': '1',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
+        }
+      }, jar);
     }
 
     if (teamResponse.status !== 200) {
@@ -495,6 +543,80 @@ app.get('/api/team-info', async (req, res) => {
     }
 
     const $ = load(teamResponse.text);
+    
+    // Extract the team name from the page to verify we got the right page
+    const pageTeamName = $('.enc-seccion span').first().text().trim();
+    
+    // Check if we got the wrong team due to Zione ID mapping issues
+    const isWrongTeam = teamName && pageTeamName && 
+      !pageTeamName.toLowerCase().includes(teamName.toLowerCase()) &&
+      !teamName.toLowerCase().includes(pageTeamName.toLowerCase());
+    
+    if (isWrongTeam) {
+      // Try to find the team by searching in standings
+      if (torID && divID) {
+        try {
+          const standingsUrl = buildUrl('/tab.posiciones.asp', {
+            dts,
+            m: 2,
+            smodo: 0,
+            torID,
+            divID,
+            gpoID
+          });
+
+          const standingsResponse = await fetchWithCookies(standingsUrl, {}, jar);
+          if (standingsResponse.status === 200) {
+            const $$ = load(standingsResponse.text);
+            const standings = parseZioneStandings($$);
+            
+            // Find the correct team in standings
+            let correctTeamId: string | null = null;
+            outerLoop:
+            for (const group of standings.groups) {
+              for (const row of group.rows) {
+                const teamNameInStandings = row.Equipo?.name?.trim() || '';
+                if (teamNameInStandings.toLowerCase().includes(teamName.toLowerCase()) ||
+                    teamName.toLowerCase().includes(teamNameInStandings.toLowerCase())) {
+                  const href = row.Equipo?.href || '';
+                  const match = href.match(/e=(\d+)/i);
+                  if (match) {
+                    correctTeamId = match[1];
+                    break outerLoop;
+                  }
+                }
+              }
+            }
+            
+            // If we found the correct ID, try again with that ID
+            if (correctTeamId && correctTeamId !== teamId) {
+              const correctUrl = buildUrl('/info.equipo.asp', { dts, m: '1', e: correctTeamId });
+              const correctResponse = await fetchWithCookies(correctUrl, {
+                headers: {
+                  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                  'Accept-Encoding': 'gzip, deflate, br, zstd',
+                  'Accept-Language': 'es-MX,es-419;q=0.9,es;q=0.8,en;q=0.7',
+                  'Cache-Control': 'no-cache',
+                  'Connection': 'keep-alive',
+                  'DNT': '1',
+                  'Pragma': 'no-cache',
+                  'Upgrade-Insecure-Requests': '1',
+                  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
+                }
+              }, jar);
+              
+              if (correctResponse.status === 200) {
+                teamResponse = correctResponse;
+                teamUrl = correctUrl;
+              }
+            }
+          }
+        } catch (searchError) {
+          // Continue with original response if search fails
+        }
+      }
+    }
+    
     const teamInfo: ZioneTeamInfo = parseTeamInfo($, teamId, teamUrl);
 
     interface StandingsSummary {
@@ -515,7 +637,7 @@ app.get('/api/team-info', async (req, res) => {
           gpoID
         });
 
-        const standingsResponse = await fetchWithCookies(standingsUrl);
+        const standingsResponse = await fetchWithCookies(standingsUrl, {}, jar);
         if (standingsResponse.status === 200) {
           const $$ = load(standingsResponse.text);
           const standings = parseZioneStandings($$);
@@ -536,10 +658,12 @@ app.get('/api/team-info', async (req, res) => {
       }
     }
 
-    res.json({
+    const response = {
       team: teamInfo,
       standings: standingsSummary
-    });
+    };
+
+    res.json(response);
   } catch (error) {
     console.error('Error fetching team info:', error);
     res.status(500).json({
