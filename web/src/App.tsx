@@ -14,6 +14,7 @@ import ZioneClientFlow, {
     ZioneScheduleMeta,
     TeamInfoResponse,
     ZioneTeamMatchSummary,
+    ZioneStandings,
     ZioneStandingsRow,
     ZioneTeamRosterEntry,
     Torneo
@@ -21,6 +22,11 @@ import ZioneClientFlow, {
 
 const isScheduleData = (data: any): data is ZioneSchedule => !!data && Array.isArray(data.matchdays) && Array.isArray(data.headers);
 const isResultsData = (data: any): data is ZioneResults => !!data && data.type === 'results';
+const isStandingsData = (data: any): data is ZioneStandings => {
+    if (!data || !Array.isArray(data.groups)) return false;
+    if (!Array.isArray(data.headers)) return false;
+    return data.groups.every((group: any) => Array.isArray(group.rows));
+};
 const isModuleData = (data: any): data is ModuleData => !!data && Array.isArray(data.tables);
 
 // Mapeo de módulo a endpoint real de Zione
@@ -31,7 +37,9 @@ type TeamClickContext = {
     match?: ZioneMatch;
     resultMatch?: ZioneResultMatch;
     matchdayDate?: string | null;
-    source: 'schedule' | 'team-schedule' | 'results';
+    standingsGroup?: string | null;
+    standingsRow?: ZioneStandingsRow;
+    source: 'schedule' | 'team-schedule' | 'results' | 'standings';
 };
 
 const getTeamIdFromHref = (href: string | null | undefined): string | null => {
@@ -104,7 +112,174 @@ const DataTable: React.FC<{ table: TablaParsed }> = ({ table }) => {
             </div>
         </div>
     );
-}
+};
+
+const STANDINGS_HEADER_KEY_MAP: Partial<Record<string, keyof ZioneStandingsRow>> = {
+    Lugar: 'Lugar',
+    Equipo: 'Equipo',
+    JJ: 'JJ',
+    JG: 'JG',
+    JE: 'JE',
+    EG: 'EG',
+    EP: 'EP',
+    JP: 'JP',
+    GF: 'GF',
+    GC: 'GC',
+    Dif: 'Dif',
+    PA: 'PA',
+    Pts: 'Pts'
+};
+
+const StandingsRenderer: React.FC<{
+    standings: ZioneStandings;
+    moduleLabel: string;
+    moduleIcon?: string;
+    onTeamClick?: (team: ZioneTeam, context: TeamClickContext) => void;
+}> = ({ standings, moduleLabel, moduleIcon, onTeamClick }) => {
+    const { meta, headers, groups } = standings;
+    const totalTeams = groups.reduce((acc, group) => acc + (group.rows?.length || 0), 0);
+    const summaryItems: SummaryItem[] = [];
+    if (totalTeams > 0) summaryItems.push({ label: 'Equipos', value: String(totalTeams), icon: '👥' });
+    if (groups.length > 1) summaryItems.push({ label: 'Grupos', value: String(groups.length), icon: '📊' });
+    if (meta.etapa) summaryItems.push({ label: 'Etapa', value: meta.etapa, icon: '🏁' });
+
+    const scheduleMetaEquivalent: ZioneScheduleMeta = {
+        title: meta.title,
+        subtitle: meta.subtitle,
+        source_url: meta.source_url,
+        ids: {
+            dts: meta.dts,
+            m: meta.m,
+            torID: meta.torID,
+            divID: meta.divID,
+            gpoID: meta.gpoID
+        },
+        week: {
+            label: meta.etapa || null,
+            start_date: null,
+            end_date: null,
+            raw_range: meta.etapa || null
+        },
+        view: 'Tabla de Posiciones'
+    };
+
+    const effectiveHeaders = headers && headers.length > 0
+        ? headers
+        : Object.keys(STANDINGS_HEADER_KEY_MAP);
+
+    return (
+        <div className="schedule-container">
+            <section className="schedule-meta">
+                <div className="schedule-header">
+                    {moduleIcon && (
+                        <img className="schedule-header-icon" src={moduleIcon} alt="" aria-hidden loading="lazy" />
+                    )}
+                    <div className="schedule-header-titles">
+                        <span className="schedule-header-label">{moduleLabel}</span>
+                        <h2 className="schedule-title">{meta.title || moduleLabel}</h2>
+                        {(meta.subtitle || meta.etapa) && (
+                            <p className="schedule-subtitle">{meta.subtitle || meta.etapa}</p>
+                        )}
+                        {meta.subtitle && meta.etapa && meta.subtitle !== meta.etapa && (
+                            <p className="schedule-subtitle schedule-subtitle-alt">{meta.etapa}</p>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            <SummaryBar items={summaryItems} />
+
+            {groups.length === 0 ? (
+                <div className="empty-state">No hay información disponible.</div>
+            ) : (
+                groups.map((group, index) => (
+                    <section key={`${group.group || 'Grupo'}-${index}`} className="module-group">
+                        <GroupHeader title={group.group} index={groups.length > 1 ? index : undefined} />
+                        <div className="table-container">
+                            <div className="table-wrapper">
+                                <table className="data-table">
+                                    <thead>
+                                        <tr>
+                                            {effectiveHeaders.map(header => (
+                                                <th key={header}>{header}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {group.rows.map((row, ri) => {
+                                            const rowKey = `${group.group || 'Grupo'}-${row.Equipo?.name || 'Equipo'}-${ri}`;
+                                            const rowClassName = row.idle ? 'standings-row-idle' : undefined;
+                                            return (
+                                                <tr key={rowKey} className={rowClassName}>
+                                                    {effectiveHeaders.map(header => {
+                                                        const mappedKey = STANDINGS_HEADER_KEY_MAP[header] as keyof ZioneStandingsRow | undefined;
+                                                        if (mappedKey === 'Equipo') {
+                                                            const equipo = row.Equipo;
+                                                            const teamIdStr = getTeamIdFromHref(equipo?.href);
+                                                            const parsedId = teamIdStr ? Number.parseInt(teamIdStr, 10) : null;
+                                                            const team: ZioneTeam = {
+                                                                name: equipo?.name || 'Equipo',
+                                                                href: equipo?.href || null,
+                                                                id: parsedId != null && !Number.isNaN(parsedId) ? parsedId : null
+                                                            };
+                                                            const handleClick = () => {
+                                                                if (!onTeamClick) return;
+                                                                onTeamClick(team, {
+                                                                    scheduleMeta: scheduleMetaEquivalent,
+                                                                    standingsGroup: group.group,
+                                                                    standingsRow: row,
+                                                                    source: 'standings'
+                                                                });
+                                                            };
+                                                            const content = onTeamClick ? (
+                                                                <button type="button" className="team-link team-name" onClick={handleClick}>
+                                                                    {equipo?.name || 'Equipo'}
+                                                                </button>
+                                                            ) : (
+                                                                <span className="team-name">{equipo?.name || 'Equipo'}</span>
+                                                            );
+                                                            return (
+                                                                <td key={header}>
+                                                                    <div className="standings-team-cell">
+                                                                        {equipo?.img && (
+                                                                            <img
+                                                                                className="standings-team-shield"
+                                                                                src={equipo.img}
+                                                                                alt=""
+                                                                                aria-hidden
+                                                                                width={24}
+                                                                                height={24}
+                                                                            />
+                                                                        )}
+                                                                        {content}
+                                                                    </div>
+                                                                </td>
+                                                            );
+                                                        }
+                                                        if (mappedKey) {
+                                                            const value = row[mappedKey];
+                                                            return (
+                                                                <td key={header}>{value ?? '—'}</td>
+                                                            );
+                                                        }
+                                                        const fallbackValue = (row as Record<string, any>)[header];
+                                                        return (
+                                                            <td key={header}>{fallbackValue ?? ''}</td>
+                                                        );
+                                                    })}
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                ))
+            )}
+        </div>
+    );
+};
 
 const TeamMatchesList: React.FC<{ title: string; items: ZioneTeamMatchSummary[] }> = ({ title, items }) => {
     if (!items || items.length === 0) return null;
@@ -343,9 +518,10 @@ const ModulePanel: React.FC<{
 
     const scheduleData = moduleKey === 'rol' && isScheduleData(data) ? data : null;
     const resultsData = moduleKey === 'resultados' && isResultsData(data) ? data : null;
-    const tableData = !scheduleData && !resultsData && isModuleData(data) ? data : null;
+    const standingsData = moduleKey === 'posiciones' && isStandingsData(data) ? data : null;
+    const tableData = !scheduleData && !resultsData && !standingsData && isModuleData(data) ? data : null;
 
-    const showModuleHeader = !scheduleData && !resultsData;
+    const showModuleHeader = !scheduleData && !resultsData && !standingsData;
 
     return (
         <section className={`module${showModuleHeader ? '' : ' module-no-header'}`}>
@@ -370,6 +546,14 @@ const ModulePanel: React.FC<{
                 {!loading && !scheduleData && resultsData && (
                     <ResultsRenderer
                         results={resultsData}
+                        moduleLabel={title}
+                        moduleIcon={icon}
+                        onTeamClick={onTeamClick}
+                    />
+                )}
+                {!loading && !scheduleData && !resultsData && standingsData && (
+                    <StandingsRenderer
+                        standings={standingsData}
                         moduleLabel={title}
                         moduleIcon={icon}
                         onTeamClick={onTeamClick}
@@ -1373,7 +1557,8 @@ export default function App() {
                     const response = await client.getTeamInfo(dtsValue, foundTeamId, {
                         torID: scheduleMeta?.ids?.torID || undefined,
                         divID: scheduleMeta?.ids?.divID || undefined,
-                        gpoID: scheduleMeta?.ids?.gpoID || undefined
+                        gpoID: scheduleMeta?.ids?.gpoID || undefined,
+                        teamName: foundTeam.name || team.name || undefined
                     });
                     
                     setTeamInfoState(prev => ({
@@ -1387,7 +1572,8 @@ export default function App() {
                     const response = await client.getTeamInfo(dtsValue, teamId, {
                         torID: scheduleMeta?.ids?.torID || undefined,
                         divID: scheduleMeta?.ids?.divID || undefined,
-                        gpoID: scheduleMeta?.ids?.gpoID || undefined
+                        gpoID: scheduleMeta?.ids?.gpoID || undefined,
+                        teamName: team.name || undefined
                     });
                     
                     setTeamInfoState(prev => ({
@@ -1402,7 +1588,8 @@ export default function App() {
                 const response = await client.getTeamInfo(dtsValue, teamId, {
                     torID: scheduleMeta?.ids?.torID || undefined,
                     divID: scheduleMeta?.ids?.divID || undefined,
-                    gpoID: scheduleMeta?.ids?.gpoID || undefined
+                    gpoID: scheduleMeta?.ids?.gpoID || undefined,
+                    teamName: team.name || undefined
                 });
 
                 setTeamInfoState(prev => ({
@@ -1432,7 +1619,10 @@ export default function App() {
         const grupo = '16960';
 
         try {
-            if (module === 'rol') {
+            if (module === 'posiciones') {
+                const standings = await client.getStandings('DTS094', torneo, division, grupo, { m: '2' });
+                setDatos(prev => ({ ...prev, [module]: standings }));
+            } else if (module === 'rol') {
                 const schedule = await client.getRolJuegos('DTS094', torneo, division, grupo, { v: '1' });
                 setDatos(prev => ({ ...prev, [module]: schedule }));
             } else if (module === 'resultados') {

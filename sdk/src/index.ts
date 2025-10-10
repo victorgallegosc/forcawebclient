@@ -216,6 +216,29 @@ export interface ZioneStandingsRow {
   idle: boolean;
 }
 
+export interface ZioneStandingsGroup {
+  group: string;
+  rows: ZioneStandingsRow[];
+}
+
+export interface ZioneStandingsMeta {
+  title: string | null;
+  subtitle: string | null;
+  etapa: string | null;
+  source_url: string | null;
+  dts: string | null;
+  m: string | null;
+  torID: string | null;
+  divID: string | null;
+  gpoID: string | null;
+}
+
+export interface ZioneStandings {
+  meta: ZioneStandingsMeta;
+  headers: string[];
+  groups: ZioneStandingsGroup[];
+}
+
 export interface TeamInfoResponse {
   team: ZioneTeamInfo;
   standings: {
@@ -458,10 +481,32 @@ export class ZioneClientFlow {
     return response.json();
   }
 
+  async getStandings(
+    dts: string,
+    torID: string,
+    divID: string,
+    gpoID?: string,
+    options?: { m?: string }
+  ): Promise<ZioneStandings> {
+    const url = new URL(`/api/posiciones-parsed/${dts}`, this.base);
+    if (torID) url.searchParams.set('torID', torID);
+    if (divID) url.searchParams.set('divID', divID);
+    if (gpoID) url.searchParams.set('gpoID', gpoID);
+    url.searchParams.set('m', options?.m ?? '2');
+
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Failed to fetch standings: ${response.status} - ${errorData.error || response.statusText}`);
+    }
+
+    return response.json();
+  }
+
   async getTeamInfo(
     dts: string,
     teamId: string | number,
-    options?: { torID?: string; divID?: string; gpoID?: string; m?: string }
+    options?: { torID?: string; divID?: string; gpoID?: string; m?: string; teamName?: string }
   ): Promise<TeamInfoResponse> {
     const url = new URL('/api/team-info', this.base);
     url.searchParams.set('dts', dts);
@@ -470,6 +515,7 @@ export class ZioneClientFlow {
     if (options?.divID) url.searchParams.set('divID', options.divID);
     if (options?.gpoID) url.searchParams.set('gpoID', options.gpoID);
     if (options?.m) url.searchParams.set('m', options.m);
+    if (options?.teamName) url.searchParams.set('teamName', options.teamName);
 
     const response = await fetch(url.toString());
     if (!response.ok) {

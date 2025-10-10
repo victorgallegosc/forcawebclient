@@ -503,6 +503,25 @@ body {
   background: rgba(77, 171, 247, 0.08);
 }
 
+.standings-team-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.standings-team-shield {
+  width: 1.75rem;
+  height: 1.75rem;
+  object-fit: contain;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.12);
+  padding: 0.2rem;
+}
+
+.standings-row-idle {
+  opacity: 0.7;
+}
+
 .empty-state {
   text-align: center;
   padding: 2.5rem 1rem;
