@@ -876,6 +876,7 @@ app.get('/api/posiciones-parsed/:dts', async (req, res) => {
     const { dts } = req.params;
     const { m = '2', torID = '', divID = '', gpoID = '' } = req.query as Record<string, string>;
 
+
     if (!dts) {
       return res.status(400).json({ error: 'DTS parameter is required' });
     }

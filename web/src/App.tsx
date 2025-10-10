@@ -562,7 +562,8 @@ const ModulePanel: React.FC<{
                 {!loading && !scheduleData && !resultsData && tableData && (
                     <ModuleDataRenderer moduleKey={moduleKey || ''} data={tableData} />
                 )}
-                {!loading && data && !scheduleData && !resultsData && !tableData && (
+                {/* Eliminar mensaje de formato desconocido SOLO para posiciones */}
+                {!loading && data && !scheduleData && !resultsData && !tableData && moduleKey !== 'posiciones' && (
                     <div className="empty-state">Formato de datos desconocido.</div>
                 )}
             </div>
