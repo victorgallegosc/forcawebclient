@@ -5,7 +5,6 @@ import ZioneClientFlow, {
     ZioneSchedule,
     ZioneMatch,
     ZioneMatchday,
-    ZioneScheduleTeams,
     ZioneScheduleTeam,
     ZioneResults,
     ZioneResultMatchday,
@@ -134,8 +133,9 @@ const StandingsRenderer: React.FC<{
     standings: ZioneStandings;
     moduleLabel: string;
     moduleIcon?: string;
+    matchdayMatches?: ZioneResultMatch[] | null;
     onTeamClick?: (team: ZioneTeam, context: TeamClickContext) => void;
-}> = ({ standings, moduleLabel, moduleIcon, onTeamClick }) => {
+}> = ({ standings, moduleLabel, moduleIcon, matchdayMatches, onTeamClick }) => {
     const { meta, headers, groups } = standings;
     const totalTeams = groups.reduce((acc, group) => acc + (group.rows?.length || 0), 0);
     const summaryItems: SummaryItem[] = [];
@@ -188,6 +188,14 @@ const StandingsRenderer: React.FC<{
             </section>
 
             <SummaryBar items={summaryItems} />
+
+            {matchdayMatches && matchdayMatches.length > 0 && (
+                <MatchdayWidget
+                    matches={matchdayMatches}
+                    scheduleMeta={scheduleMetaEquivalent}
+                    onTeamClick={onTeamClick}
+                />
+            )}
 
             {groups.length === 0 ? (
                 <div className="empty-state">No hay información disponible.</div>
@@ -280,7 +288,6 @@ const StandingsRenderer: React.FC<{
         </div>
     );
 };
-
 const TeamMatchesList: React.FC<{ title: string; items: ZioneTeamMatchSummary[] }> = ({ title, items }) => {
     if (!items || items.length === 0) return null;
 
@@ -512,8 +519,9 @@ const ModulePanel: React.FC<{
     moduleKey?: string;
     client: ZioneClientFlow;
     icon?: string;
+    matchdayMatches?: ZioneResultMatch[] | null;
     onTeamClick?: (team: ZioneTeam, context: TeamClickContext) => void;
-}> = ({ title, data, onLoad, loading, moduleKey, client, icon, onTeamClick }) => {
+}> = ({ title, data, onLoad, loading, moduleKey, client, icon, matchdayMatches, onTeamClick }) => {
     React.useEffect(() => { if (!data && !loading) onLoad(); }, [data, loading, onLoad]);
 
     const scheduleData = moduleKey === 'rol' && isScheduleData(data) ? data : null;
@@ -556,6 +564,7 @@ const ModulePanel: React.FC<{
                         standings={standingsData}
                         moduleLabel={title}
                         moduleIcon={icon}
+                        matchdayMatches={matchdayMatches}
                         onTeamClick={onTeamClick}
                     />
                 )}
@@ -582,6 +591,113 @@ const GroupHeader: React.FC<{ title?: string; index?: number }> = ({ title, inde
     );
 };
 
+// Widget para mostrar los partidos de la jornada
+const MatchdayWidget: React.FC<{
+    matches: ZioneResultMatch[];
+    scheduleMeta: ZioneScheduleMeta;
+    onTeamClick?: (team: ZioneTeam, context: TeamClickContext) => void;
+}> = ({ matches, scheduleMeta, onTeamClick }) => {
+    if (!matches || matches.length === 0) return null;
+
+    const formatTime = (time: string | null) => {
+        if (!time) return '--:--';
+        return time.replace('hs', '').trim();
+    };
+
+    // Determinar si hay partidos jugados y por jugar
+    const playedMatches = matches.filter(m => {
+        const statusLower = (m.status || '').toLowerCase();
+        const hasScore = m.score1 != null && m.score2 != null;
+        return statusLower.includes('jugado') || hasScore;
+    });
+    const upcomingMatches = matches.filter(m => {
+        const statusLower = (m.status || '').toLowerCase();
+        const hasScore = m.score1 != null && m.score2 != null;
+        return !statusLower.includes('jugado') && !hasScore;
+    });
+
+    // Crear título dinámico
+    let widgetTitle = '⚽ Partidos';
+    if (upcomingMatches.length > 0 && playedMatches.length > 0) {
+        widgetTitle = '⚽ Partidos de la Jornada';
+    } else if (upcomingMatches.length > 0 && playedMatches.length === 0) {
+        widgetTitle = '⚽ Partidos de Hoy';
+    } else if (playedMatches.length > 0) {
+        widgetTitle = '⚽ Resultados de la Jornada';
+    }
+
+    return (
+        <section className="matchday-widget">
+            <h3 className="matchday-widget-title">{widgetTitle}</h3>
+            <div className="matchday-widget-matches">
+                {matches.map((match, index) => {
+                    const statusText = match.status?.trim() || 'Por jugar';
+                    const statusLower = statusText.toLowerCase();
+                    const hasScore = match.score1 != null && match.score2 != null;
+                    const isPlayed = statusLower.includes('jugado') || hasScore;
+
+                    const handleTeam1Click = () => {
+                        if (!onTeamClick) return;
+                        const context: TeamClickContext = {
+                            scheduleMeta: scheduleMeta,
+                            matchdayDate: null,
+                            resultMatch: match,
+                            source: 'results'
+                        };
+                        onTeamClick(match.team1, context);
+                    };
+
+                    const handleTeam2Click = () => {
+                        if (!onTeamClick) return;
+                        const context: TeamClickContext = {
+                            scheduleMeta: scheduleMeta,
+                            matchdayDate: null,
+                            resultMatch: match,
+                            source: 'results'
+                        };
+                        onTeamClick(match.team2, context);
+                    };
+
+                    return (
+                        <article key={index} className={`matchday-widget-match ${isPlayed ? 'match-played' : 'match-pending'}`}>
+                            <div className="matchday-widget-match-time">
+                                {formatTime(match.time)}
+                            </div>
+                            <div className="matchday-widget-match-teams">
+                                <div className="matchday-widget-team">
+                                    {onTeamClick ? (
+                                        <button type="button" className="team-link" onClick={handleTeam1Click}>
+                                            {match.team1?.name}
+                                        </button>
+                                    ) : (
+                                        <span>{match.team1?.name}</span>
+                                    )}
+                                </div>
+                                <div className="matchday-widget-score">
+                                    {hasScore ? (
+                                        <span className="score-display">{match.score1} - {match.score2}</span>
+                                    ) : (
+                                        <span className="vs-text">vs</span>
+                                    )}
+                                </div>
+                                <div className="matchday-widget-team">
+                                    {onTeamClick ? (
+                                        <button type="button" className="team-link" onClick={handleTeam2Click}>
+                                            {match.team2?.name}
+                                        </button>
+                                    ) : (
+                                        <span>{match.team2?.name}</span>
+                                    )}
+                                </div>
+                            </div>
+                        </article>
+                    );
+                })}
+            </div>
+        </section>
+    );
+};
+
 // Tarjeta compacta para cada partido
 const GameCard: React.FC<{
     match: ZioneMatch;
@@ -590,13 +706,16 @@ const GameCard: React.FC<{
     onTeamClick?: (team: ZioneTeam, match: ZioneMatch) => void;
 }> = ({ match, dateLabel, result, onTeamClick }) => {
     const statusText = match.status?.trim() || 'Sin estado';
-    const statusKey = statusText.toLowerCase().includes('jugado')
+    const statusLower = statusText.toLowerCase();
+    const statusKey = statusLower.includes('jugado')
         ? 'played'
-        : statusText.toLowerCase().includes('pendiente')
-            ? 'pending'
-            : statusText.toLowerCase().includes('suspendido')
-                ? 'suspended'
-                : 'default';
+        : statusLower.includes('perdido') || statusLower.includes('ganado') || statusLower.includes('empatado')
+            ? 'played'
+            : statusLower.includes('pendiente')
+                ? 'pending'
+                : statusLower.includes('suspendido')
+                    ? 'suspended'
+                    : 'default';
 
     const formatTime = (time: string | null) => {
         if (!time) return '--:--';
@@ -774,92 +893,15 @@ const buildResultLookup = (results: ZioneResults | null | undefined): Record<str
     return lookup;
 };
 
-const TeamsByClub: React.FC<{
-    data: ZioneScheduleTeams;
-    onSelect: (team: ZioneScheduleTeam) => void;
-    activeTeamId: number | null;
-    loadingTeamId: number | null;
-}> = ({ data, onSelect, activeTeamId, loadingTeamId }) => {
-    const teams = data?.teams || [];
-    if (!teams.length) return null;
+const SCORE_INVALID_TOKENS = new Set(['', '-', '—', 'vs']);
 
-    const selectedIndex = activeTeamId != null
-        ? teams.findIndex(team => team.id === activeTeamId)
-        : -1;
-
-    const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-        const { value } = event.target;
-        if (value === '') {
-            return;
-        }
-
-        const index = Number(value);
-        const team = teams[index];
-        if (!team) return;
-
-        const disabled = (team.id == null && !team.href);
-        if (!disabled) {
-            onSelect(team);
-        }
-    };
-
-    return (
-        <section className="schedule-team-section">
-            <header className="team-section-header">
-                <h3 className="team-section-title">Rol por Equipo</h3>
-            </header>
-            <div className="team-picker-mobile" data-label="Picker">
-                <label htmlFor="team-picker" className="team-picker-label">Elegir equipo</label>
-                <div className="team-picker-control">
-                    <select
-                        id="team-picker"
-                        className="team-picker-select"
-                        value={selectedIndex >= 0 ? String(selectedIndex) : ''}
-                        onChange={handleSelectChange}
-                        disabled={teams.length === 0}
-                    >
-                        <option value="" disabled>Selecciona un equipo</option>
-                        {teams.map((team, index) => {
-                            const disabled = team.id == null && !team.href;
-                            return (
-                                <option key={`${team.id ?? team.name}-${index}`} value={String(index)} disabled={disabled}>
-                                    {team.name}
-                                </option>
-                            );
-                        })}
-                    </select>
-                    {loadingTeamId != null && selectedIndex >= 0 && teams[selectedIndex]?.id === loadingTeamId && (
-                        <span className="team-picker-status">Cargando…</span>
-                    )}
-                </div>
-            </div>
-            <div className="team-card-grid">
-                {teams.map(team => {
-                    const metaParts = [team.group, team.division].filter(Boolean);
-                    const teamId = team.id ?? null;
-                    const isActive = teamId !== null && teamId === activeTeamId;
-                    const isLoading = teamId !== null && teamId === loadingTeamId;
-                    const disabled = teamId === null && !team.href;
-
-                    return (
-                        <button
-                            key={`${team.id ?? team.name}`}
-                            type="button"
-                            className={`team-card${isActive ? ' is-active' : ''}${disabled ? ' team-card-disabled' : ''}`}
-                            onClick={() => !disabled && onSelect(team)}
-                            disabled={disabled || isLoading}
-                        >
-                            <span className="team-card-name">{team.name}</span>
-                            {metaParts.length > 0 && (
-                                <span className="team-card-meta">{metaParts.join(' · ')}</span>
-                            )}
-                            <span className="team-card-link">{isLoading ? 'Cargando…' : 'Ver partidos'}</span>
-                        </button>
-                    );
-                })}
-            </div>
-        </section>
-    );
+const isScoreValue = (value: ZioneResultMatch['score1']) => {
+    if (value === null || value === undefined) return false;
+    const normalized = String(value).trim();
+    if (normalized.length === 0) return false;
+    const normalizedLower = normalized.toLowerCase();
+    if (SCORE_INVALID_TOKENS.has(normalizedLower)) return false;
+    return /\d/.test(normalizedLower);
 };
 
 const ResultCard: React.FC<{
@@ -952,25 +994,79 @@ const ResultsRenderer: React.FC<{
     moduleIcon?: string;
     onTeamClick?: (team: ZioneTeam, context: TeamClickContext) => void;
 }> = ({ results, moduleLabel, moduleIcon, onTeamClick }) => {
-    const { meta, matchdays, summary } = results;
+    const { meta, matchdays } = results;
 
     const hasMatchdays = Array.isArray(matchdays) && matchdays.length > 0;
-    const totalResults = summary?.total_results ?? (hasMatchdays ? matchdays.reduce((acc, md) => acc + md.matches.length, 0) : 0);
     const weekInfo = meta.week;
     const weekRange = weekInfo?.raw_range || null;
     const startLabel = weekInfo?.start_date ? formatIsoToLabel(weekInfo.start_date) : null;
     const endLabel = weekInfo?.end_date ? formatIsoToLabel(weekInfo.end_date) : null;
-    const summaryItems: SummaryItem[] = [];
 
-    if (totalResults > 0) summaryItems.push({ label: 'Resultados', value: String(totalResults), icon: '⚽' });
-    if (hasMatchdays) summaryItems.push({ label: 'Jornadas', value: String(matchdays.length), icon: '📆' });
+    // State for jornada filter
+    const [selectedJornadaIndex, setSelectedJornadaIndex] = useState<number | null>(null);
+
+    // Determinar la última jornada con resultados
+    const lastJornadaWithResults = React.useMemo(() => {
+        if (!hasMatchdays || matchdays.length === 0) return null;
+        
+        // Buscar desde el final hacia atrás la primera jornada con resultados
+        for (let i = matchdays.length - 1; i >= 0; i--) {
+            const matchday = matchdays[i];
+            // Verificar si tiene al menos un resultado válido (scores no null)
+            const hasResults = matchday.matches.some(m => 
+                m.score1 != null || m.score2 != null
+            );
+            if (hasResults) {
+                // Extraer número de jornada o usar label
+                const jornadaNum = matchday.matches[0]?.jornada?.number;
+                return jornadaNum ? `Jornada ${jornadaNum}` : matchday.label || 'Jornada';
+            }
+        }
+        
+        // Si ninguna tiene resultados, usar la última jornada disponible
+        const lastMatchday = matchdays[matchdays.length - 1];
+        const jornadaNum = lastMatchday.matches[0]?.jornada?.number;
+        return jornadaNum ? `Jornada ${jornadaNum}` : lastMatchday.label || 'Jornada';
+    }, [hasMatchdays, matchdays]);
+
+    // Obtener el rango de fechas de la última jornada con resultados
+    const lastJornadaDateRange = React.useMemo(() => {
+        if (!hasMatchdays || matchdays.length === 0) return null;
+        
+        for (let i = matchdays.length - 1; i >= 0; i--) {
+            const matchday = matchdays[i];
+            const hasResults = matchday.matches.some(m => 
+                m.score1 != null || m.score2 != null
+            );
+            if (hasResults && matchday.date) {
+                return formatIsoToLabel(matchday.date);
+            }
+        }
+        
+        return null;
+    }, [hasMatchdays, matchdays]);
 
     const rangeDisplay = (startLabel || endLabel)
         ? `${startLabel || 'Por definir'}${endLabel ? ` – ${endLabel}` : ''}`
         : weekRange || null;
-    const contextTitle = weekInfo?.label || meta.title || moduleLabel;
-    const contextSubtitle = rangeDisplay || meta.subtitle || null;
+    const contextTitle = lastJornadaWithResults || weekInfo?.label || meta.title || moduleLabel;
+    const contextSubtitle = lastJornadaDateRange || rangeDisplay || meta.subtitle || null;
     const secondarySubtitle = meta.subtitle && meta.subtitle !== contextSubtitle ? meta.subtitle : null;
+
+    // Filter matchdays based on selection
+    const filteredMatchdays = selectedJornadaIndex !== null && hasMatchdays
+        ? [matchdays[selectedJornadaIndex]]
+        : matchdays;
+
+    // Ordenar matchdays de más reciente a más antiguo
+    const sortedMatchdays = React.useMemo(() => {
+        if (!filteredMatchdays) return [];
+        return [...filteredMatchdays].sort((a, b) => {
+            const dateA = a.date ? new Date(a.date).getTime() : 0;
+            const dateB = b.date ? new Date(b.date).getTime() : 0;
+            return dateB - dateA; // Descendente (más reciente primero)
+        });
+    }, [filteredMatchdays]);
 
     return (
         <div className="schedule-container">
@@ -988,38 +1084,81 @@ const ResultsRenderer: React.FC<{
                 </div>
             </section>
 
-            <SummaryBar items={summaryItems} />
+            {hasMatchdays && matchdays.length > 0 && (
+                <div className="team-selector-section">
+                    <label htmlFor="jornada-selector" className="team-selector-label">
+                        Filtrar por jornada
+                    </label>
+                    <select
+                        id="jornada-selector"
+                        className="team-selector-dropdown"
+                        value={selectedJornadaIndex !== null ? String(selectedJornadaIndex) : ''}
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            setSelectedJornadaIndex(value === '' ? null : Number(value));
+                        }}
+                    >
+                        <option value="">Todas las jornadas</option>
+                        {[...matchdays].reverse().map((matchday: ZioneResultMatchday, reverseIndex: number) => {
+                            const actualIndex = matchdays.length - 1 - reverseIndex;
+                            const jornadaNum = matchday.matches[0]?.jornada?.number;
+                            const label = jornadaNum ? `Jornada ${jornadaNum}` : matchday.label || `Jornada ${actualIndex + 1}`;
+                            return (
+                                <option key={actualIndex} value={String(actualIndex)}>
+                                    {label}
+                                </option>
+                            );
+                        })}
+                    </select>
+                </div>
+            )}
 
-            {hasMatchdays ? (
-                matchdays.map((matchday: ZioneResultMatchday, index: number) => {
-                    const headerLabel = matchday.label || formatIsoToLabel(matchday.date) || 'Sin fecha';
-                    const cardDate = matchday.date ? formatIsoToLabel(matchday.date) : matchday.label;
-                    return (
-                        <section key={`${headerLabel}-${index}`} className="schedule-matchday">
-                            <header className="matchday-header">
-                                <span className="matchday-date">{headerLabel}</span>
-                            </header>
-                            <div className="matchday-grid">
-                                {matchday.matches.map((match: ZioneResultMatch, matchIndex: number) => (
-                                    <ResultCard
-                                        key={matchIndex}
-                                        match={match}
-                                        dateLabel={cardDate}
-                                        onTeamClick={teamItem => {
-                                            if (!onTeamClick) return;
-                                            onTeamClick(teamItem, {
-                                                scheduleMeta: meta,
-                                                resultMatch: match,
-                                                matchdayDate: matchday.date || null,
-                                                source: 'results'
-                                            });
-                                        }}
-                                    />
-                                ))}
-                            </div>
-                        </section>
-                    );
-                })
+            {hasMatchdays && sortedMatchdays.length > 0 ? (
+                <>
+                    <div className="schedule-section">
+                        <div className="schedule-section-header">
+                            <h3 className="schedule-section-title">
+                                {selectedJornadaIndex !== null ? 'Resultados de la Jornada' : 'Resultados Recientes'}
+                            </h3>
+                        </div>
+                        {sortedMatchdays.map((matchday: ZioneResultMatchday, index: number) => {
+                            // Obtener el número de jornada de cualquier partido que lo tenga
+                            const jornadaNum = matchday.matches.find(m => m.jornada?.number != null)?.jornada?.number;
+                            const jornadaLabel = jornadaNum ? `Jornada ${jornadaNum}` : (matchday.label && !matchday.label.includes('/') ? matchday.label : null);
+                            const headerLabel = jornadaLabel || `Jornada ${index + 1}`;
+                            const dateLabel = matchday.date ? formatIsoToLabel(matchday.date) : null;
+                            
+                            return (
+                                <section key={`${headerLabel}-${index}`} className="schedule-matchday">
+                                    <header className="matchday-header">
+                                        <div className="matchday-header-content">
+                                            <span className="matchday-date">{headerLabel}</span>
+                                            {dateLabel && <span className="matchday-subtitle">{dateLabel}</span>}
+                                        </div>
+                                    </header>
+                                    <div className="matchday-grid">
+                                        {matchday.matches.map((match: ZioneResultMatch, matchIndex: number) => (
+                                            <ResultCard
+                                                key={matchIndex}
+                                                match={match}
+                                                dateLabel={null}
+                                                onTeamClick={teamItem => {
+                                                    if (!onTeamClick) return;
+                                                    onTeamClick(teamItem, {
+                                                        scheduleMeta: meta,
+                                                        resultMatch: match,
+                                                        matchdayDate: matchday.date || null,
+                                                        source: 'results'
+                                                    });
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                </section>
+                            );
+                        })}
+                    </div>
+                </>
             ) : (
                 <div className="empty-state">No hay resultados disponibles.</div>
             )}
@@ -1035,10 +1174,9 @@ const ScheduleRenderer: React.FC<{
     moduleIcon?: string;
     onTeamClick?: (team: ZioneTeam, context: TeamClickContext) => void;
 }> = ({ schedule, client, moduleLabel, moduleIcon, onTeamClick }) => {
-    const { meta, matchdays, rest, summary } = schedule;
+    const { meta, matchdays, rest } = schedule;
 
     const hasMatchdays = Array.isArray(matchdays) && matchdays.length > 0;
-    const totalMatches = summary?.total_matches ?? (hasMatchdays ? matchdays.reduce((acc, md) => acc + md.matches.length, 0) : 0);
     const weekInfo = meta.week;
     const weekRange = weekInfo?.raw_range || null;
     const startLabel = weekInfo?.start_date ? formatIsoToLabel(weekInfo.start_date) : null;
@@ -1046,17 +1184,56 @@ const ScheduleRenderer: React.FC<{
     const teamsByClub = schedule.teamsByClub;
     const [resultLookup, setResultLookup] = useState<Record<string, MatchResult>>({});
     const resultsRequestKey = React.useRef<string | null>(null);
-    const summaryItems: SummaryItem[] = [];
 
-    if (totalMatches > 0) summaryItems.push({ label: 'Partidos', value: String(totalMatches), icon: '⚽' });
-    if (hasMatchdays) summaryItems.push({ label: 'Jornadas', value: String(matchdays.length), icon: '📆' });
-    if (teamsByClub?.total) summaryItems.push({ label: 'Equipos', value: String(teamsByClub.total), icon: '👥' });
+    // Determinar la jornada actual (primera jornada con partidos pendientes)
+    const currentJornada = React.useMemo(() => {
+        if (!hasMatchdays) return null;
+        
+        // Buscar la primera jornada que tenga al menos un partido sin jugar
+        for (const matchday of matchdays) {
+            const hasPending = matchday.matches.some(m => !m.status?.toLowerCase().includes('jugado'));
+            if (hasPending) {
+                const jornadaNum = matchday.matches[0]?.jornada?.number;
+                return jornadaNum ? `Jornada ${jornadaNum}` : matchday.label || 'Jornada';
+            }
+        }
+        
+        // Si todos están jugados, retornar la última jornada
+        if (matchdays.length > 0) {
+            const lastMatchday = matchdays[matchdays.length - 1];
+            const jornadaNum = lastMatchday.matches[0]?.jornada?.number;
+            return jornadaNum ? `Jornada ${jornadaNum}` : lastMatchday.label || 'Jornada';
+        }
+        
+        return null;
+    }, [hasMatchdays, matchdays]);
+
+    // Obtener el rango de fechas de la jornada actual
+    const currentJornadaDateRange = React.useMemo(() => {
+        if (!hasMatchdays) return null;
+        
+        for (const matchday of matchdays) {
+            const hasPending = matchday.matches.some(m => !m.status?.toLowerCase().includes('jugado'));
+            if (hasPending && matchday.date) {
+                return formatIsoToLabel(matchday.date);
+            }
+        }
+        
+        if (matchdays.length > 0) {
+            const lastMatchday = matchdays[matchdays.length - 1];
+            if (lastMatchday.date) {
+                return formatIsoToLabel(lastMatchday.date);
+            }
+        }
+        
+        return null;
+    }, [hasMatchdays, matchdays]);
 
     const rangeDisplay = (startLabel || endLabel)
         ? `${startLabel || 'Sin definir'}${endLabel ? ` – ${endLabel}` : ''}`
         : weekRange || null;
-    const contextTitle = weekInfo?.label || meta.title || moduleLabel;
-    const contextSubtitle = rangeDisplay || meta.subtitle || null;
+    const contextTitle = currentJornada || weekInfo?.label || meta.title || moduleLabel;
+    const contextSubtitle = currentJornadaDateRange || rangeDisplay || meta.subtitle || null;
     const secondarySubtitle = meta.subtitle && meta.subtitle !== contextSubtitle ? meta.subtitle : null;
 
     const hasPlayedMatches = React.useMemo(() => {
@@ -1128,6 +1305,8 @@ const ScheduleRenderer: React.FC<{
         error: string | null;
     }>({ team: null, data: null, loading: false, error: null });
 
+    const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+
     useEffect(() => {
         setTeamState({ team: null, data: null, loading: false, error: null });
     }, [schedule.meta.source_url]);
@@ -1170,6 +1349,194 @@ const ScheduleRenderer: React.FC<{
         }
     };
 
+    // If a team is selected, show only team view
+    if (teamState.team && teamState.data) {
+        return (
+            <div className="schedule-container">
+                <section className="schedule-meta">
+                    <div className="schedule-header">
+                        {moduleIcon && (
+                            <img className="schedule-header-icon" src={moduleIcon} alt="" aria-hidden loading="lazy" />
+                        )}
+                        <div className="schedule-header-titles">
+                            <span className="schedule-header-label">{moduleLabel} · {teamState.team.name}</span>
+                            <h2 className="schedule-title">{teamState.team.name}</h2>
+                            {teamState.team.group && (
+                                <p className="schedule-subtitle">
+                                    {teamState.team.group}{teamState.team.division ? ` · ${teamState.team.division}` : ''}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    <button 
+                        type="button" 
+                        className="back-to-full-button"
+                        onClick={() => setTeamState({ team: null, data: null, loading: false, error: null })}
+                        aria-label="Volver a vista completa"
+                    >
+                        ← Volver al rol completo
+                    </button>
+                </section>
+
+                {teamState.loading && <div className="loading">Cargando rol del equipo…</div>}
+                {teamState.error && <div className="app-alert">{teamState.error}</div>}
+                {!teamState.loading && !teamState.error && teamState.data.matchdays.length === 0 && (
+                    <div className="empty-state">No hay partidos programados para este equipo.</div>
+                )}
+                {!teamState.loading && !teamState.error && teamState.data.matchdays.length > 0 && (
+                    <>
+                        {(() => {
+                            const upcomingMatchdays: ZioneMatchday[] = [];
+                            const pastMatchdays: ZioneMatchday[] = [];
+                            
+                            teamState.data.matchdays.forEach((matchday: ZioneMatchday) => {
+                                const pendingMatches = matchday.matches.filter(m => {
+                                    const status = m.status?.toLowerCase() || '';
+                                    // Un partido está pendiente si tiene status "programado" o similar, NO si está jugado
+                                    const isPending = !status.includes('jugado') 
+                                        && !status.includes('finalizado') 
+                                        && !status.includes('terminado')
+                                        && !status.includes('perdido')
+                                        && !status.includes('ganado')
+                                        && !status.includes('empatado');
+                                    return isPending;
+                                });
+                                
+                                const playedMatches = matchday.matches.filter(m => {
+                                    const status = m.status?.toLowerCase() || '';
+                                    // Un partido está jugado si tiene cualquiera de estos status
+                                    return status.includes('jugado') 
+                                        || status.includes('finalizado') 
+                                        || status.includes('terminado')
+                                        || status.includes('perdido')
+                                        || status.includes('ganado')
+                                        || status.includes('empatado');
+                                });
+                                
+                                // Si hay partidos pendientes, crear un matchday para próximos
+                                if (pendingMatches.length > 0) {
+                                    upcomingMatchdays.push({
+                                        ...matchday,
+                                        matches: pendingMatches
+                                    });
+                                }
+                                
+                                // Si hay partidos jugados, crear un matchday para pasados
+                                if (playedMatches.length > 0) {
+                                    pastMatchdays.push({
+                                        ...matchday,
+                                        matches: playedMatches
+                                    });
+                                }
+                            });
+                            
+                            return (
+                                <>
+                                    {upcomingMatchdays.length > 0 && (
+                                        <div className="schedule-section">
+                                            <div className="schedule-section-header">
+                                                <h3 className="schedule-section-title">Próximos Partidos</h3>
+                                            </div>
+                                            {upcomingMatchdays.map((matchday: ZioneMatchday, index: number) => {
+                                                const jornadaNum = matchday.matches.find(m => m.jornada?.number != null)?.jornada?.number;
+                                                const jornadaLabel = jornadaNum ? `Jornada ${jornadaNum}` : (matchday.label && !matchday.label.includes('/') ? matchday.label : null);
+                                                const headerLabel = jornadaLabel || `Jornada ${index + 1}`;
+                                                const dateLabel = matchday.date ? formatIsoToLabel(matchday.date) : null;
+                                                const cardDate = matchday.date ? formatIsoToLabel(matchday.date) : matchday.label;
+                                                return (
+                                                    <section key={`upcoming-${headerLabel}-${index}`} className="schedule-matchday">
+                                                        <header className="matchday-header">
+                                                            <div className="matchday-header-content">
+                                                                <span className="matchday-date">{headerLabel}</span>
+                                                                {dateLabel && <span className="matchday-subtitle">{dateLabel}</span>}
+                                                            </div>
+                                                        </header>
+                                                        <div className="matchday-grid">
+                                                            {matchday.matches.map((match: ZioneMatch, matchIndex: number) => (
+                                                                <GameCard
+                                                                    key={matchIndex}
+                                                                    match={match}
+                                                                    dateLabel={cardDate}
+                                                                    result={resolveResult(match, matchday.date)}
+                                                                    onTeamClick={teamItem => {
+                                                                        if (!onTeamClick) return;
+                                                                        const scheduleMeta = teamState.data?.meta || meta;
+                                                                        onTeamClick(teamItem, {
+                                                                            scheduleMeta,
+                                                                            match,
+                                                                            matchdayDate: matchday.date || null,
+                                                                            source: 'team-schedule'
+                                                                        });
+                                                                    }}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    </section>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    
+                                    {pastMatchdays.length > 0 && (
+                                        <div className="schedule-section">
+                                            <div className="schedule-section-header">
+                                                <h3 className="schedule-section-title">Partidos Anteriores</h3>
+                                            </div>
+                                            {pastMatchdays.map((matchday: ZioneMatchday, index: number) => {
+                                                const jornadaNum = matchday.matches.find(m => m.jornada?.number != null)?.jornada?.number;
+                                                const jornadaLabel = jornadaNum ? `Jornada ${jornadaNum}` : (matchday.label && !matchday.label.includes('/') ? matchday.label : null);
+                                                const headerLabel = jornadaLabel || `Jornada ${index + 1}`;
+                                                const dateLabel = matchday.date ? formatIsoToLabel(matchday.date) : null;
+                                                const cardDate = matchday.date ? formatIsoToLabel(matchday.date) : matchday.label;
+                                                return (
+                                                    <section key={`past-${headerLabel}-${index}`} className="schedule-matchday">
+                                                        <header className="matchday-header">
+                                                            <div className="matchday-header-content">
+                                                                <span className="matchday-date">{headerLabel}</span>
+                                                                {dateLabel && <span className="matchday-subtitle">{dateLabel}</span>}
+                                                            </div>
+                                                        </header>
+                                                        <div className="matchday-grid">
+                                                            {matchday.matches.map((match: ZioneMatch, matchIndex: number) => (
+                                                                <GameCard
+                                                                    key={matchIndex}
+                                                                    match={match}
+                                                                    dateLabel={cardDate}
+                                                                    result={resolveResult(match, matchday.date)}
+                                                                    onTeamClick={teamItem => {
+                                                                        if (!onTeamClick) return;
+                                                                        const scheduleMeta = teamState.data?.meta || meta;
+                                                                        onTeamClick(teamItem, {
+                                                                            scheduleMeta,
+                                                                            match,
+                                                                            matchdayDate: matchday.date || null,
+                                                                            source: 'team-schedule'
+                                                                        });
+                                                                    }}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    </section>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </>
+                            );
+                        })()}
+                    </>
+                )}
+
+                {rest && rest.length > 0 && (
+                    <div className="schedule-rest">
+                        <span className="rest-label">Descansan</span>
+                        <span className="rest-teams">{rest.map(team => team.name).join(', ')}</span>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
     return (
         <div className="schedule-container">
             <section className="schedule-meta">
@@ -1187,100 +1554,172 @@ const ScheduleRenderer: React.FC<{
             </section>
 
             {teamsByClub && teamsByClub.teams?.length > 0 && (
-                <>
-                    <TeamsByClub
-                        data={teamsByClub}
-                        onSelect={handleTeamSelect}
-                        activeTeamId={teamState.team?.id ?? null}
-                        loadingTeamId={teamState.loading ? teamState.team?.id ?? null : null}
-                    />
-                    {teamState.team && (
-                        <section className="team-schedule-view">
-                            <header className="team-schedule-header">
-                                <div>
-                                    <h4 className="team-schedule-title">{teamState.team.name}</h4>
-                                    {teamState.team.group && (
-                                        <p className="team-schedule-meta">{teamState.team.group}{teamState.team.division ? ` · ${teamState.team.division}` : ''}</p>
-                                    )}
-                                </div>
-                                {teamState.loading && <span className="team-schedule-status">Cargando…</span>}
-                            </header>
-                            {teamState.error && <div className="team-schedule-error">{teamState.error}</div>}
-                            {!teamState.loading && !teamState.error && teamState.data && teamState.data.matchdays.length === 0 && (
-                                <div className="team-schedule-empty">No hay partidos programados para este equipo.</div>
-                            )}
-                            {!teamState.loading && !teamState.error && teamState.data && teamState.data.matchdays.length > 0 && (
-                                <div className="team-schedule-matchdays">
-                                    {teamState.data.matchdays.map((md, idx) => {
-                                        const headerLabel = md.label || formatIsoToLabel(md.date) || 'Sin fecha';
-                                        const cardDate = md.date ? formatIsoToLabel(md.date) : md.label;
-                                        return (
-                                            <div key={`${headerLabel}-${idx}`} className="team-schedule-matchday">
-                                                <div className="team-schedule-matchday-header">
-                                                    <span className="team-schedule-matchday-title">{headerLabel}</span>
-                                                    <span className="team-schedule-matchday-count">{md.matches.length} partidos</span>
-                                                </div>
-                                                <div className="team-schedule-matchday-grid">
-                                                    {md.matches.map((match, matchIdx) => (
-                                                        <GameCard
-                                                            key={matchIdx}
-                                                            match={match}
-                                                            dateLabel={cardDate}
-                                                            result={resolveResult(match, md.date)}
-                                                            onTeamClick={teamItem => {
-                                                                if (!onTeamClick) return;
-                                                                const scheduleMeta = teamState.data?.meta || meta;
-                                                                onTeamClick(teamItem, {
-                                                                    scheduleMeta,
-                                                                    match,
-                                                                    matchdayDate: md.date || null,
-                                                                    source: 'team-schedule'
-                                                                });
-                                                            }}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </section>
-                    )}
-                </>
+                <div className="team-selector-section">
+                    <label htmlFor="team-selector" className="team-selector-label">
+                        Ver rol por equipo
+                    </label>
+                    <select
+                        id="team-selector"
+                        className="team-selector-dropdown"
+                        value={teamState.team?.id ?? ''}
+                        onChange={(e) => {
+                            const teamId = e.target.value;
+                            if (!teamId) return;
+                            const team = teamsByClub.teams.find(t => String(t.id) === teamId);
+                            if (team) handleTeamSelect(team);
+                        }}
+                        disabled={teamState.loading}
+                    >
+                        <option value="">Selecciona un equipo</option>
+                        {teamsByClub.teams.map((team, index) => {
+                            const disabled = team.id == null && !team.href;
+                            return (
+                                <option 
+                                    key={`${team.id ?? team.name}-${index}`} 
+                                    value={team.id ?? ''} 
+                                    disabled={disabled}
+                                >
+                                    {team.name}
+                                </option>
+                            );
+                        })}
+                    </select>
+                    {teamState.loading && <span className="team-selector-loading">Cargando…</span>}
+                </div>
             )}
 
             {hasMatchdays ? (
-                matchdays.map((matchday: ZioneMatchday, index: number) => {
-                    const headerLabel = matchday.label || formatIsoToLabel(matchday.date) || 'Sin fecha';
-                    const cardDate = matchday.date ? formatIsoToLabel(matchday.date) : matchday.label;
-                    return (
-                        <section key={`${headerLabel}-${index}`} className="schedule-matchday">
-                            <header className="matchday-header">
-                                <span className="matchday-date">{headerLabel}</span>
-                            </header>
-                            <div className="matchday-grid">
-                                {matchday.matches.map((match: ZioneMatch, matchIndex: number) => (
-                                    <GameCard
-                                        key={matchIndex}
-                                        match={match}
-                                        dateLabel={cardDate}
-                                        result={resolveResult(match, matchday.date)}
-                                        onTeamClick={teamItem => {
-                                            if (!onTeamClick) return;
-                                            onTeamClick(teamItem, {
-                                                scheduleMeta: meta,
-                                                match,
-                                                matchdayDate: matchday.date || null,
-                                                source: 'schedule'
-                                            });
-                                        }}
-                                    />
-                                ))}
-                            </div>
-                        </section>
-                    );
-                })
+                <>
+                    {(() => {
+                        const upcomingMatchdays: ZioneMatchday[] = [];
+                        const pastMatchdays: ZioneMatchday[] = [];
+                        
+                        matchdays.forEach((matchday: ZioneMatchday) => {
+                            const hasPlayed = matchday.matches.some(m => m.status?.toLowerCase().includes('jugado'));
+                            const hasPending = matchday.matches.some(m => !m.status?.toLowerCase().includes('jugado'));
+                            
+                            // If matchday has any pending games, consider it upcoming
+                            if (hasPending) {
+                                upcomingMatchdays.push(matchday);
+                            } else if (hasPlayed) {
+                                pastMatchdays.push(matchday);
+                            } else {
+                                // Default to upcoming if status is unclear
+                                upcomingMatchdays.push(matchday);
+                            }
+                        });
+
+                        const hasUpcoming = upcomingMatchdays.length > 0;
+                        const hasPast = pastMatchdays.length > 0;
+                        
+                        return (
+                            <>
+                                {/* Tab Navigation */}
+                                {hasUpcoming && hasPast && (
+                                    <div className="schedule-tabs">
+                                        <button
+                                            type="button"
+                                            className={`schedule-tab ${activeTab === 'upcoming' ? 'schedule-tab--active' : ''}`}
+                                            onClick={() => setActiveTab('upcoming')}
+                                        >
+                                            Próximos Partidos
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`schedule-tab ${activeTab === 'past' ? 'schedule-tab--active' : ''}`}
+                                            onClick={() => setActiveTab('past')}
+                                        >
+                                            Partidos Anteriores
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Tab Content */}
+                                {activeTab === 'upcoming' && upcomingMatchdays.length > 0 && (
+                                    <div className="schedule-section">
+                                        {upcomingMatchdays.map((matchday: ZioneMatchday, index: number) => {
+                                            const jornadaNum = matchday.matches.find(m => m.jornada?.number != null)?.jornada?.number;
+                                            const jornadaLabel = jornadaNum ? `Jornada ${jornadaNum}` : (matchday.label && !matchday.label.includes('/') ? matchday.label : null);
+                                            const headerLabel = jornadaLabel || `Jornada ${index + 1}`;
+                                            const dateLabel = matchday.date ? formatIsoToLabel(matchday.date) : null;
+                                            const cardDate = matchday.date ? formatIsoToLabel(matchday.date) : matchday.label;
+                                            return (
+                                                <section key={`upcoming-${headerLabel}-${index}`} className="schedule-matchday">
+                                                    <header className="matchday-header">
+                                                        <div className="matchday-header-content">
+                                                            <span className="matchday-date">{headerLabel}</span>
+                                                            {dateLabel && <span className="matchday-subtitle">{dateLabel}</span>}
+                                                        </div>
+                                                    </header>
+                                                    <div className="matchday-grid">
+                                                        {matchday.matches.map((match: ZioneMatch, matchIndex: number) => (
+                                                            <GameCard
+                                                                key={matchIndex}
+                                                                match={match}
+                                                                dateLabel={cardDate}
+                                                                result={resolveResult(match, matchday.date)}
+                                                                onTeamClick={teamItem => {
+                                                                    if (!onTeamClick) return;
+                                                                    onTeamClick(teamItem, {
+                                                                        scheduleMeta: meta,
+                                                                        match,
+                                                                        matchdayDate: matchday.date || null,
+                                                                        source: 'schedule'
+                                                                    });
+                                                                }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </section>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                
+                                {activeTab === 'past' && pastMatchdays.length > 0 && (
+                                    <div className="schedule-section">
+                                        {pastMatchdays.map((matchday: ZioneMatchday, index: number) => {
+                                            const jornadaNum = matchday.matches.find(m => m.jornada?.number != null)?.jornada?.number;
+                                            const jornadaLabel = jornadaNum ? `Jornada ${jornadaNum}` : (matchday.label && !matchday.label.includes('/') ? matchday.label : null);
+                                            const headerLabel = jornadaLabel || `Jornada ${index + 1}`;
+                                            const dateLabel = matchday.date ? formatIsoToLabel(matchday.date) : null;
+                                            const cardDate = matchday.date ? formatIsoToLabel(matchday.date) : matchday.label;
+                                            return (
+                                                <section key={`past-${headerLabel}-${index}`} className="schedule-matchday">
+                                                    <header className="matchday-header">
+                                                        <div className="matchday-header-content">
+                                                            <span className="matchday-date">{headerLabel}</span>
+                                                            {dateLabel && <span className="matchday-subtitle">{dateLabel}</span>}
+                                                        </div>
+                                                    </header>
+                                                    <div className="matchday-grid">
+                                                        {matchday.matches.map((match: ZioneMatch, matchIndex: number) => (
+                                                            <GameCard
+                                                                key={matchIndex}
+                                                                match={match}
+                                                                dateLabel={cardDate}
+                                                                result={resolveResult(match, matchday.date)}
+                                                                onTeamClick={teamItem => {
+                                                                    if (!onTeamClick) return;
+                                                                    onTeamClick(teamItem, {
+                                                                        scheduleMeta: meta,
+                                                                        match,
+                                                                        matchdayDate: matchday.date || null,
+                                                                        source: 'schedule'
+                                                                    });
+                                                                }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </section>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
+                </>
             ) : (
                 <div className="empty-state">No hay partidos programados.</div>
             )}
@@ -1412,6 +1851,7 @@ export default function App() {
     const [loadingModules, setLoadingModules] = useState<Record<string, boolean>>({});
     const [error, setError] = useState('');
     const [selectedModule, setSelectedModule] = useState<string>('posiciones');
+    const [matchdayMatches, setMatchdayMatches] = useState<ZioneResultMatch[] | null>(null);
     const client = useMemo(() => new ZioneClientFlow(apiBaseFromEnv || undefined), [apiBaseFromEnv]);
     const [teamInfoState, setTeamInfoState] = useState<TeamInfoState>({
         open: false,
@@ -1623,6 +2063,131 @@ export default function App() {
             if (module === 'posiciones') {
                 const standings = await client.getStandings('DTS094', torneo, division, grupo, { m: '2' });
                 setDatos(prev => ({ ...prev, [module]: standings }));
+                
+                setMatchdayMatches(null);
+
+                try {
+                    const [schedule, resultados] = await Promise.all([
+                        client.getRolJuegos('DTS094', torneo, division, grupo, { v: '1' }),
+                        client.getResultados('DTS094', torneo, division, grupo, { m: '2', smodo: '0' })
+                    ]);
+
+                    const today = new Date();
+                    const todayStr = today.toISOString().split('T')[0];
+
+                    // Función auxiliar para convertir ZioneMatch a ZioneResultMatch
+                    const toResultMatch = (match: ZioneMatch): ZioneResultMatch => ({
+                        time: match.time,
+                        kickoff: match.kickoff,
+                        group: match.group,
+                        stage: match.stage,
+                        jornada: match.jornada,
+                        team1: match.team1,
+                        team2: match.team2,
+                        score1: null,
+                        score2: null,
+                        separator: 'vs',
+                        status: match.status
+                    });
+
+                    // Paso 1: Determinar la jornada actual/próxima
+                    let currentJornadaNumber: number | null = null;
+                    
+                    // Primero, buscar en el schedule la jornada de hoy o próxima
+                    if (Array.isArray(schedule.matchdays)) {
+                        // Buscar jornada de hoy
+                        const todayMatchday = schedule.matchdays.find(md => md.date === todayStr);
+                        if (todayMatchday && todayMatchday.matches && todayMatchday.matches.length > 0) {
+                            const jornadaNum = todayMatchday.matches.find(m => m.jornada?.number != null)?.jornada?.number;
+                            if (jornadaNum != null) {
+                                currentJornadaNumber = jornadaNum;
+                            }
+                        }
+                        
+                        // Si no hay jornada hoy, buscar la próxima jornada futura
+                        if (currentJornadaNumber == null) {
+                            const futureMatchdays = schedule.matchdays
+                                .filter(md => md.date && md.date >= todayStr && md.matches && md.matches.length > 0)
+                                .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+                            
+                            if (futureMatchdays.length > 0) {
+                                const nextMatchday = futureMatchdays[0];
+                                const jornadaNum = nextMatchday.matches?.find(m => m.jornada?.number != null)?.jornada?.number;
+                                if (jornadaNum != null) {
+                                    currentJornadaNumber = jornadaNum;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Si aún no tenemos jornada, usar la más reciente con resultados
+                    if (currentJornadaNumber == null && Array.isArray(resultados.matchdays)) {
+                        const matchdaysWithResults = resultados.matchdays
+                            .filter(md => {
+                                const matches = md.matches ?? [];
+                                return matches.some(m => isScoreValue(m.score1) || isScoreValue(m.score2));
+                            })
+                            .map(md => {
+                                const matches = md.matches ?? [];
+                                const jornadaNumbers = matches
+                                    .map(m => m.jornada?.number)
+                                    .filter((n): n is number => typeof n === 'number' && Number.isFinite(n));
+                                const maxJornada = jornadaNumbers.length > 0 ? Math.max(...jornadaNumbers) : null;
+                                return { matchday: md, jornadaNumber: maxJornada };
+                            })
+                            .filter(item => item.jornadaNumber != null)
+                            .sort((a, b) => (b.jornadaNumber ?? 0) - (a.jornadaNumber ?? 0));
+                        
+                        if (matchdaysWithResults.length > 0) {
+                            currentJornadaNumber = matchdaysWithResults[0].jornadaNumber;
+                        }
+                    }
+                    
+                    // Paso 2: Recolectar partidos solo de la jornada actual
+                    const matchCandidates: ZioneResultMatch[] = [];
+                    const processedKeys = new Set<string>();
+                    
+                    if (currentJornadaNumber != null) {
+                        // Primero, buscar en resultados (tienen marcadores)
+                        if (Array.isArray(resultados.matchdays)) {
+                            resultados.matchdays.forEach(matchday => {
+                                const matches = matchday.matches ?? [];
+                                matches.forEach(match => {
+                                    if (match.jornada?.number === currentJornadaNumber) {
+                                        const key = `${match.team1?.name}-${match.team2?.name}-${match.jornada?.number}`;
+                                        if (!processedKeys.has(key)) {
+                                            processedKeys.add(key);
+                                            matchCandidates.push(match);
+                                        }
+                                    }
+                                });
+                            });
+                        }
+                        
+                        // Luego, complementar con schedule si no están en resultados
+                        if (Array.isArray(schedule.matchdays)) {
+                            schedule.matchdays.forEach(matchday => {
+                                const matches = matchday.matches ?? [];
+                                matches.forEach(match => {
+                                    if (match.jornada?.number === currentJornadaNumber) {
+                                        const key = `${match.team1?.name}-${match.team2?.name}-${match.jornada?.number}`;
+                                        if (!processedKeys.has(key)) {
+                                            processedKeys.add(key);
+                                            matchCandidates.push(toResultMatch(match));
+                                        }
+                                    }
+                                });
+                            });
+                        }
+                    }
+
+                    if (matchCandidates.length > 0) {
+                        setMatchdayMatches(matchCandidates.slice(0, 8));
+                    }
+                } catch (scheduleError) {
+                    console.error('Error loading matchday matches:', scheduleError);
+                }
+
             } else if (module === 'rol') {
                 const schedule = await client.getRolJuegos('DTS094', torneo, division, grupo, { v: '1' });
                 setDatos(prev => ({ ...prev, [module]: schedule }));
@@ -1706,6 +2271,7 @@ export default function App() {
                     moduleKey={selectedModule}
                     client={client}
                     icon={moduleIcons[selectedModule]}
+                    matchdayMatches={matchdayMatches}
                     onTeamClick={handleTeamInfoRequest}
                 />
             </main>
