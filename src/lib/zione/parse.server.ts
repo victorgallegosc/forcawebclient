@@ -41,6 +41,8 @@ async function loadPage(url: string): Promise<CheerioAPI> {
       accept: "text/html,application/xhtml+xml",
       "accept-language": "es-MX,es;q=0.9",
     },
+    // Bound the request so a hung upstream still falls back to cached data.
+    signal: AbortSignal.timeout(12_000),
   });
   if (!response.ok) throw new Error(`Zione responded ${response.status} for ${url}`);
   return cheerio.load(await response.text());
