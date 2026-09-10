@@ -9,7 +9,7 @@ const NAV = [
   { to: "/tabla", label: "Tabla", icon: Table2 },
   { to: "/calendario", label: "Calendario", icon: CalendarDays },
   { to: "/goleo", label: "Goleo", icon: Target },
-  { to: "/aventones", label: "Aventones", icon: Car },
+  { to: "/aventones", label: "Ride", icon: Car },
 ] as const;
 
 export function SiteNav() {
@@ -180,8 +180,8 @@ export function DataNote({ fetchedAt, stale }: { fetchedAt: string; stale: boole
 
   return (
     <p className="mt-10 text-center text-xs text-muted-foreground animate-fade-in">
-      Datos de la liga · actualizado {time}
-      {stale ? " · última copia disponible" : ""}
+      Datos de la liga · actualizados a las {time}
+      {stale ? " · un poco atrasados" : ""}
     </p>
   );
 }

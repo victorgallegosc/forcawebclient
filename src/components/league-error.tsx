@@ -16,7 +16,7 @@ export function LeagueRetryError({
     <PageShell title={title} description={description}>
       <Panel interactive className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          La consola de la liga no respondió a tiempo. Suele resolverse al reintentar.
+          La liga no contestó a tiempo. Casi siempre se arregla al volver a intentar.
         </p>
         <button
           type="button"

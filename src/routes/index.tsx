@@ -35,12 +35,12 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Próximo partido, forma reciente, rival y turno de aventón — F7 Sabatino Vespertino, Grupo 4 B.",
+          "Próximo partido, forma reciente, rival y quién da el ride — F7 Sabatino Vespertino, Grupo 4 B.",
       },
       { property: "og:title", content: "Cancha · Fin de Semana 2026" },
       {
         property: "og:description",
-        content: "Lo esencial del sábado: partido, tabla y aventón.",
+        content: "Lo del sábado: partido, tabla y ride.",
       },
     ],
   }),
@@ -55,7 +55,7 @@ export const Route = createFileRoute("/")({
   errorComponent: () => (
     <LeagueRetryError
       title="Cancha"
-      description="No pudimos leer los datos de la liga ahora mismo."
+      description="No pudimos traer los datos de la liga por ahora."
     />
   ),
 });
@@ -137,7 +137,7 @@ function Index() {
               to="/aventones"
               className="inline-flex items-center gap-2 rounded-md px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
             >
-              Quién maneja
+              Quién da el ride
             </Link>
           </div>
         </div>
@@ -200,7 +200,7 @@ function Index() {
               ) : null}
               {h2h && h2h.played > 0 ? (
                 <p className="mt-4 text-sm text-muted-foreground">
-                  Cara a cara: {h2h.won}V · {h2h.drawn}E · {h2h.lost}D en este torneo.
+                  Cara a cara en este torneo: {h2h.won}V · {h2h.drawn}E · {h2h.lost}D.
                 </p>
               ) : null}
             </Panel>
@@ -234,7 +234,7 @@ function Index() {
               </div>
             ) : (
               <p className="mt-4 text-muted-foreground">
-                Todavía no hay partidos jugados.
+                Aún no hay partidos jugados.
               </p>
             )}
             {lastMatch ? (
@@ -251,20 +251,20 @@ function Index() {
           </div>
 
           <div>
-            <SectionLabel>Aventón</SectionLabel>
+            <SectionLabel>Ride</SectionLabel>
             {nextDriver ? (
               <>
                 <p className="display-title mt-3 text-5xl md:text-6xl">{nextDriver.driver}</p>
                 <p className="mt-2 text-sm text-muted-foreground">{formatDay(nextDriver.day)}</p>
               </>
             ) : (
-              <p className="mt-4 text-muted-foreground">Sin turno pendiente.</p>
+              <p className="mt-4 text-muted-foreground">Nadie tiene ride pendiente.</p>
             )}
             <Link
               to="/aventones"
               className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
             >
-              Ver rol completo <ArrowRight className="size-4" />
+              Ver el rol completo <ArrowRight className="size-4" />
             </Link>
 
             <div className="mt-8">
@@ -275,7 +275,7 @@ function Index() {
                   { label: "Puntos", value: ourRow?.points ?? "—" },
                   { label: "Goles a favor", value: ourRow?.goalsFor ?? "—" },
                   {
-                    label: race?.isLeader ? "Ventaja" : "Del líder",
+                    label: race?.isLeader ? "Ventaja" : "Pts del líder",
                     value: race == null ? "—" : race.isLeader ? "Líder" : `-${race.gap}`,
                   },
                 ].map((stat) => (

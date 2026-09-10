@@ -15,12 +15,12 @@ export const Route = createFileRoute("/calendario")({
       {
         name: "description",
         content:
-          "Rol de juegos y resultados semana por semana de los Grupos 4 A y 4 B, F7 Sabatino Vespertino.",
+          "Calendario y resultados semana por semana de los Grupos 4 A y 4 B, F7 Sabatino Vespertino.",
       },
       { property: "og:title", content: "Calendario · Cancha" },
       {
         property: "og:description",
-        content: "Rol de juegos y resultados de los Grupos 4 A y 4 B.",
+        content: "Calendario y resultados de los Grupos 4 A y 4 B.",
       },
     ],
   }),
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/calendario")({
   errorComponent: () => (
     <LeagueRetryError
       title="Calendario"
-      description="No pudimos leer el rol de juegos ahora mismo."
+      description="No pudimos cargar el calendario por ahora."
     />
   ),
 });
@@ -52,7 +52,7 @@ function CalendarioPage() {
 
   return (
     <PageShell
-      eyebrow="Rol de juegos"
+      eyebrow="Partidos"
       title="Calendario"
       description="Semana por semana, con marcador cuando ya se jugó."
     >
@@ -68,14 +68,14 @@ function CalendarioPage() {
         ))}
         <div className="ml-auto">
           <FilterChip active={onlyUs} onClick={() => setOnlyUs((value) => !value)} tone="accent">
-            Solo nuestro equipo
+            Solo nuestros partidos
           </FilterChip>
         </div>
       </div>
 
       <div className="space-y-10 animate-rise">
         {weeks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No hay juegos para este filtro.</p>
+          <p className="text-sm text-muted-foreground">No hay partidos con este filtro.</p>
         ) : (
           weeks.map((week) => (
             <section key={`${group?.groupId}-${week.label}`} className="border-t border-border/60 pt-8 first:border-0 first:pt-0">

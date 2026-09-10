@@ -89,7 +89,7 @@ export const swapDaysFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await applyChange(
       "swap",
-      `${data.driverA} (${formatDay(data.dayA)}) y ${data.driverB} (${formatDay(data.dayB)}) se cambiaron de sábado`,
+      `${data.driverA} (${formatDay(data.dayA)}) y ${data.driverB} (${formatDay(data.dayB)}) se cambiaron el ride`,
       [
         { day: data.dayA, override_driver: data.driverB },
         { day: data.dayB, override_driver: data.driverA },
@@ -107,7 +107,7 @@ export const setCancelledFn = createServerFn({ method: "POST" })
       "cancel",
       data.cancelled
         ? `Sin partido el ${formatDay(data.day)}`
-        : `Se restauró el partido del ${formatDay(data.day)}`,
+        : `Se reactivó el partido del ${formatDay(data.day)}`,
       [{ day: data.day, cancelled: data.cancelled }],
     );
     return null;
@@ -121,8 +121,8 @@ export const setActualDriverFn = createServerFn({ method: "POST" })
     await applyChange(
       "drove",
       data.driver
-        ? `${data.driver} manejó el ${formatDay(data.day)}`
-        : `Se borró quién manejó el ${formatDay(data.day)}`,
+        ? `${data.driver} dio el ride el ${formatDay(data.day)}`
+        : `Se borró quién dio el ride el ${formatDay(data.day)}`,
       [{ day: data.day, actual_driver: data.driver }],
     );
     return null;
@@ -131,7 +131,7 @@ export const setActualDriverFn = createServerFn({ method: "POST" })
 export const clearOverrideFn = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ day: daySchema }).parse(data))
   .handler(async ({ data }) => {
-    await applyChange("reset", `Se restauró el turno normal del ${formatDay(data.day)}`, [
+    await applyChange("reset", `Se regresó al ride normal del ${formatDay(data.day)}`, [
       { day: data.day, override_driver: null },
     ]);
     return null;

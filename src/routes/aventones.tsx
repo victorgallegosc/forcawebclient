@@ -26,14 +26,14 @@ import { isUs } from "@/components/league-bits";
 export const Route = createFileRoute("/aventones")({
   head: () => ({
     meta: [
-      { title: "Aventones · Cancha" },
+      { title: "Ride · Cancha" },
       {
         name: "description",
         content:
-          "A quién le toca manejar cada sábado: rotación entre Víctor, Mau y Gabo, con cambios, partidos cancelados y turnos cubiertos.",
+          "Quién da el ride cada sábado: rotación entre Víctor, Mau y Gabo, con cambios, partidos cancelados y rides cubiertos.",
       },
-      { property: "og:title", content: "Aventones · Cancha" },
-      { property: "og:description", content: "A quién le toca manejar este sábado." },
+      { property: "og:title", content: "Ride · Cancha" },
+      { property: "og:description", content: "A quién le toca el ride este sábado." },
     ],
   }),
   loader: async ({ context }) => {
@@ -45,8 +45,8 @@ export const Route = createFileRoute("/aventones")({
   component: AventonesPage,
   errorComponent: () => (
     <LeagueRetryError
-      title="Aventones"
-      description="No pudimos cargar los turnos ahora mismo."
+      title="Ride"
+      description="No pudimos cargar los rides por ahora."
     />
   ),
 });
@@ -97,7 +97,7 @@ function AventonesPage() {
   const run = useMutation({
     mutationFn: async (task: () => Promise<string | null | void>) => task(),
     onSuccess: async (result) => {
-      setMessage(typeof result === "string" ? result : "Listo, turnos actualizados.");
+      setMessage(typeof result === "string" ? result : "Listo, rides actualizados.");
       setSwapWith(null);
       await queryClient.invalidateQueries({ queryKey: ["ride-state"] });
     },
@@ -108,9 +108,9 @@ function AventonesPage() {
 
   return (
     <PageShell
-      eyebrow="Rol de manejo"
-      title="Aventones"
-      description="Rotación entre Víctor, Mau y Gabo en los sábados que juega el equipo."
+      eyebrow="Rol de rides"
+      title="Ride"
+      description="Rotación entre Víctor, Mau y Gabo los sábados que juega el equipo."
     >
       <div className="grid gap-6 md:grid-cols-[1.25fr_1fr] animate-rise">
         <Panel interactive>
@@ -119,7 +119,7 @@ function AventonesPage() {
             <>
               <p className="display-title mt-3 text-5xl md:text-6xl">{next.driver}</p>
               <p className="mt-2 text-sm text-muted-foreground">
-                Maneja el {formatDay(next.day)}
+                Da el ride el {formatDay(next.day)}
                 {next.swapped ? " · cambio acordado" : ""}
               </p>
               <div className="mt-6 flex flex-wrap gap-2">
@@ -130,7 +130,7 @@ function AventonesPage() {
                   }
                   className="inline-flex items-center gap-2 rounded-md bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-opacity hover:opacity-90"
                 >
-                  <Car className="size-4" /> Confirmar que manejó
+                  <Car className="size-4" /> Confirmar que dio el ride
                 </button>
                 <button
                   type="button"
@@ -147,9 +147,9 @@ function AventonesPage() {
         </Panel>
 
         <div>
-          <SectionLabel>Turnos a favor</SectionLabel>
+          <SectionLabel>Rides a favor</SectionLabel>
           <p className="mt-2 text-xs text-muted-foreground">
-            Quien cubre un turno ajeno se salta el suyo siguiente.
+            Si cubres el ride de alguien, te saltas el tuyo después.
           </p>
           <div className="mt-4 space-y-1">
             {DRIVERS.map((driver) => (
@@ -265,7 +265,7 @@ function AventonesPage() {
             </div>
           ))}
           {upcoming.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin sábados por delante.</p>
+            <p className="text-sm text-muted-foreground">No hay más sábados por delante.</p>
           ) : null}
         </div>
       </section>
@@ -297,7 +297,7 @@ function AventonesPage() {
                       onClick={() => run.mutate(() => setActualDriver(day.day, driver))}
                       className="rounded-md bg-background/90 px-3 py-1.5 text-xs font-medium shadow-[inset_0_0_0_1px_var(--color-border)]"
                     >
-                      manejó {driver}
+                      dio el ride {driver}
                     </button>
                   ))}
                 </div>
@@ -305,7 +305,7 @@ function AventonesPage() {
             </div>
           ))}
           {past.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Todavía no hay sábados pasados.</p>
+            <p className="text-sm text-muted-foreground">Aún no hay sábados pasados.</p>
           ) : null}
         </div>
       </section>
@@ -316,14 +316,14 @@ function AventonesPage() {
             <SectionLabel>Actividad</SectionLabel>
             <h2 className="mt-2 text-2xl">Últimos cambios</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Lo más reciente arriba.
+              Lo más reciente aparece arriba.
             </p>
           </div>
           <button
             type="button"
             onClick={() =>
               run.mutate(() =>
-                undoLast().then((s) => (s ? `Se deshizo: ${s}` : "No hay nada que deshacer.")),
+                undoLast().then((s) => (s ? `Se deshizo: ${s}` : "No hay nada qué deshacer.")),
               )
             }
             className="inline-flex items-center gap-2 rounded-md bg-secondary px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-secondary/80"
@@ -366,7 +366,7 @@ function AventonesPage() {
             </div>
           ))}
           {log.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Todavía no hay cambios registrados.</p>
+            <p className="text-sm text-muted-foreground">Aún no hay cambios registrados.</p>
           ) : null}
         </div>
       </section>

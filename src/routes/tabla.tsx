@@ -19,7 +19,7 @@ export const Route = createFileRoute("/tabla")({
       { property: "og:title", content: "Tabla · Cancha" },
       {
         property: "og:description",
-        content: "Posiciones actualizadas de los Grupos 4 A y 4 B.",
+        content: "Posiciones al día de los Grupos 4 A y 4 B.",
       },
     ],
   }),
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/tabla")({
   errorComponent: () => (
     <LeagueRetryError
       title="Tabla"
-      description="No pudimos leer la tabla de la liga en este momento."
+      description="No pudimos cargar la tabla por ahora."
     />
   ),
 });
