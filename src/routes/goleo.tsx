@@ -2,7 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { DataNote, PageShell, Panel } from "@/components/app-shell";
+import { DataNote, FilterChip, PageShell, Panel, SectionLabel } from "@/components/app-shell";
 import { cardsQuery, scorersQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { OUR_TEAM } from "@/lib/zione/constants";
@@ -11,13 +11,13 @@ import type { GroupPlayerStats } from "@/lib/zione/types";
 export const Route = createFileRoute("/goleo")({
   head: () => ({
     meta: [
-      { title: "Goleo y tarjetas · Sunderland A3860" },
+      { title: "Goleo · Cancha" },
       {
         name: "description",
         content:
           "Tabla de goleo individual y tarjetas de los Grupos 4 A y 4 B en la F7 Sabatino Vespertino.",
       },
-      { property: "og:title", content: "Goleo y tarjetas · Sunderland A3860" },
+      { property: "og:title", content: "Goleo · Cancha" },
       { property: "og:description", content: "Goleo individual y tarjetas por grupo." },
     ],
   }),
@@ -35,20 +35,21 @@ export const Route = createFileRoute("/goleo")({
   ),
 });
 
-function StatTable({ group, valueLabel }: { group: GroupPlayerStats; valueLabel: string }) {
+function StatList({ group, valueLabel }: { group: GroupPlayerStats; valueLabel: string }) {
   return (
-    <Panel>
-      <h2 className="mb-4 text-2xl">{group.groupName}</h2>
+    <section>
+      <SectionLabel>Grupo</SectionLabel>
+      <h2 className="mt-2 mb-5 text-2xl">{group.groupName}</h2>
       <div className="space-y-1">
         {group.rows.slice(0, 15).map((row) => (
           <div
             key={`${row.player}-${row.position}`}
             className={cn(
-              "flex items-center gap-3 rounded-xl bg-secondary/40 px-4 py-3",
-              row.team === OUR_TEAM && "bg-primary/15 ring-1 ring-primary/40",
+              "flex items-center gap-3 rounded-lg bg-secondary/45 px-4 py-3",
+              row.team === OUR_TEAM && "bg-primary/10 outline outline-1 outline-primary/25",
             )}
           >
-            <span className="w-6 text-sm text-muted-foreground">{row.position}</span>
+            <span className="w-6 text-sm tabular-nums text-muted-foreground">{row.position}</span>
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold">{row.player}</p>
               <p className="truncate text-xs text-muted-foreground">{row.team}</p>
@@ -65,7 +66,7 @@ function StatTable({ group, valueLabel }: { group: GroupPlayerStats; valueLabel:
           <p className="text-sm text-muted-foreground">Sin registros todavía.</p>
         ) : null}
       </div>
-    </Panel>
+    </section>
   );
 }
 
@@ -81,28 +82,19 @@ function GoleoPage() {
     <PageShell
       eyebrow="Estadísticas"
       title="Goleo y tarjetas"
-      description="Los individuales de los Grupos 4 A y 4 B."
+      description="Individuales de los Grupos 4 A y 4 B."
     >
-      <div className="mb-6 flex gap-2">
+      <div className="mb-8 flex gap-2 animate-fade-in">
         {(["goleo", "tarjetas"] as const).map((option) => (
-          <button
-            key={option}
-            onClick={() => setTab(option)}
-            className={cn(
-              "rounded-full px-4 py-2 text-sm font-medium capitalize transition-colors",
-              option === tab
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {option}
-          </button>
+          <FilterChip key={option} active={option === tab} onClick={() => setTab(option)}>
+            {option === "goleo" ? "Goleo" : "Tarjetas"}
+          </FilterChip>
         ))}
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-12 animate-rise">
         {groups.map((group) => (
-          <StatTable key={`${tab}-${group.groupId}`} group={group} valueLabel={label} />
+          <StatList key={`${tab}-${group.groupId}`} group={group} valueLabel={label} />
         ))}
       </div>
       <DataNote

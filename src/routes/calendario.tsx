@@ -2,22 +2,21 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { DataNote, PageShell, Panel } from "@/components/app-shell";
+import { DataNote, FilterChip, PageShell, Panel, SectionLabel } from "@/components/app-shell";
 import { MatchMeta, MatchRow, isUs } from "@/components/league-bits";
 import { scheduleQuery } from "@/lib/queries";
-import { cn } from "@/lib/utils";
 import { GROUPS } from "@/lib/zione/constants";
 
 export const Route = createFileRoute("/calendario")({
   head: () => ({
     meta: [
-      { title: "Calendario y resultados · Sunderland A3860" },
+      { title: "Calendario · Cancha" },
       {
         name: "description",
         content:
           "Rol de juegos y resultados semana por semana de los Grupos 4 A y 4 B, F7 Sabatino Vespertino.",
       },
-      { property: "og:title", content: "Calendario y resultados · Sunderland A3860" },
+      { property: "og:title", content: "Calendario · Cancha" },
       {
         property: "og:description",
         content: "Rol de juegos y resultados de los Grupos 4 A y 4 B.",
@@ -53,54 +52,37 @@ function CalendarioPage() {
     <PageShell
       eyebrow="Rol de juegos"
       title="Calendario"
-      description="Semana por semana, con marcador final cuando ya se jugó."
+      description="Semana por semana, con marcador cuando ya se jugó."
     >
-      <div className="mb-6 flex flex-wrap items-center gap-2">
+      <div className="mb-8 flex flex-wrap items-center gap-2 animate-fade-in">
         {GROUPS.map((entry) => (
-          <button
+          <FilterChip
             key={entry.id}
+            active={entry.id === groupId}
             onClick={() => setGroupId(entry.id)}
-            aria-pressed={entry.id === groupId}
-            className={cn(
-              "rounded-full px-4 py-2 text-sm font-medium transition-colors",
-              entry.id === groupId
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-muted-foreground hover:text-foreground",
-            )}
           >
             {entry.name}
-          </button>
+          </FilterChip>
         ))}
-        <button
-          onClick={() => setOnlyUs((value) => !value)}
-          aria-pressed={onlyUs}
-          className={cn(
-            "ml-auto rounded-full px-4 py-2 text-sm font-medium transition-colors",
-            onlyUs
-              ? "bg-accent text-accent-foreground"
-              : "bg-secondary text-muted-foreground hover:text-foreground",
-          )}
-        >
-          Solo Sunderland
-        </button>
+        <div className="ml-auto">
+          <FilterChip active={onlyUs} onClick={() => setOnlyUs((value) => !value)} tone="accent">
+            Solo nuestro equipo
+          </FilterChip>
+        </div>
       </div>
 
-      <div className="space-y-5">
+      <div className="space-y-10 animate-rise">
         {weeks.length === 0 ? (
-          <Panel>No hay juegos para este filtro.</Panel>
+          <p className="text-sm text-muted-foreground">No hay juegos para este filtro.</p>
         ) : (
           weeks.map((week) => (
-            <Panel key={`${group?.groupId}-${week.label}`}>
-              <div className="mb-4">
-                <h2 className="text-2xl">{week.label}</h2>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                  {week.range}
-                </p>
-              </div>
-              <div className="space-y-4">
+            <section key={`${group?.groupId}-${week.label}`} className="border-t border-border/60 pt-8 first:border-0 first:pt-0">
+              <SectionLabel>{week.range}</SectionLabel>
+              <h2 className="mt-2 mb-5 text-2xl">{week.label}</h2>
+              <div className="space-y-5">
                 {week.matches.map((match, index) => (
                   <div key={`${match.home}-${match.away}-${index}`}>
-                    <p className="mb-1 px-1 text-xs font-semibold uppercase tracking-wider text-primary">
+                    <p className="mb-1.5 px-1 text-xs font-semibold text-muted-foreground">
                       {match.date}
                     </p>
                     <MatchRow match={match} />
@@ -108,7 +90,7 @@ function CalendarioPage() {
                   </div>
                 ))}
               </div>
-            </Panel>
+            </section>
           ))
         )}
       </div>
