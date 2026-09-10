@@ -1,80 +1,22 @@
 import type { RideAdjustment } from "./rotation";
 
 /**
- * Ride history reconstructed from the group chat for the 3er Torneo 2026.
- * Only Víctor, Mau and Gabo rotate — the fourth chat member does not do rides.
- *
- * Rotation is Víctor → Mau → Gabo. When someone else drove, `actual_driver`
- * records it (and that person gets a ride a favor). 22 ago was marked without
- * ride for the trio (vestidor / no se armaron), so it does not advance the rol.
+ * Ride history for the 3er Torneo 2026 (Víctor / Mau / Gabo only).
+ * Rotation: Víctor → Mau → Gabo. Cancelled / sin-ride days skip the turn.
  */
 export const TOURNAMENT_RIDE_SEED: RideAdjustment[] = [
-  {
-    day: "2026-07-04",
-    cancelled: false,
-    override_driver: null,
-    actual_driver: "Mau",
-    note: "Le tocaba a Víctor. Gabo iba a pasar pero no pudo; Mau pasó por Víctor y dio el ride.",
-  },
-  {
-    day: "2026-07-11",
-    cancelled: false,
-    override_driver: null,
-    actual_driver: "Mau",
-    note: "Gabo no llegó (dentista). Mau dio el ride.",
-  },
-  {
-    day: "2026-07-18",
-    cancelled: false,
-    override_driver: null,
-    actual_driver: "Gabo",
-    note: null,
-  },
-  {
-    day: "2026-07-25",
-    cancelled: false,
-    override_driver: null,
-    actual_driver: "Víctor",
-    note: null,
-  },
-  {
-    day: "2026-08-01",
-    cancelled: false,
-    override_driver: null,
-    actual_driver: "Mau",
-    note: null,
-  },
-  {
-    day: "2026-08-08",
-    cancelled: false,
-    override_driver: null,
-    actual_driver: "Víctor",
-    note: "Le tocaba a Gabo; Víctor dio el ride.",
-  },
-  {
-    day: "2026-08-15",
-    cancelled: false,
-    override_driver: null,
-    actual_driver: "Gabo",
-    note: "Le tocaba a Víctor; Gabo dio el ride.",
-  },
-  {
-    day: "2026-08-22",
-    cancelled: true,
-    override_driver: null,
-    actual_driver: null,
-    note: "Sin ride del trio (vestidor / no se armaron ese sábado).",
-  },
-  {
-    day: "2026-08-29",
-    cancelled: false,
-    override_driver: null,
-    actual_driver: "Mau",
-    note: null,
-  },
+  { day: "2026-07-04", cancelled: false, override_driver: null, actual_driver: "Mau", note: null },
+  { day: "2026-07-11", cancelled: false, override_driver: null, actual_driver: "Mau", note: null },
+  { day: "2026-07-18", cancelled: false, override_driver: null, actual_driver: "Gabo", note: null },
+  { day: "2026-07-25", cancelled: false, override_driver: null, actual_driver: "Víctor", note: null },
+  { day: "2026-08-01", cancelled: false, override_driver: null, actual_driver: "Mau", note: null },
+  { day: "2026-08-08", cancelled: false, override_driver: null, actual_driver: "Víctor", note: null },
+  { day: "2026-08-15", cancelled: false, override_driver: null, actual_driver: "Gabo", note: null },
+  { day: "2026-08-22", cancelled: true, override_driver: null, actual_driver: null, note: null },
+  { day: "2026-08-29", cancelled: false, override_driver: null, actual_driver: "Mau", note: null },
 ];
 
-/** Seed is source of truth for known tournament days; DB can still set overrides. */
+/** Seed owns known tournament days; DB can still set overrides for “Cambiar”. */
 export function mergeRideAdjustments(
   seed: RideAdjustment[],
   stored: RideAdjustment[],
@@ -92,10 +34,13 @@ export function mergeRideAdjustments(
       byDay.set(entry.day, {
         ...base,
         override_driver: entry.override_driver ?? base.override_driver,
+        cancelled: entry.cancelled,
+        actual_driver: entry.actual_driver ?? base.actual_driver,
+        note: null,
       });
       continue;
     }
-    byDay.set(entry.day, { ...entry });
+    byDay.set(entry.day, { ...entry, note: null });
   }
 
   return [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));

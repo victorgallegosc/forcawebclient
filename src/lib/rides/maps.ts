@@ -67,7 +67,6 @@ export type DriverRoutePlan = {
   totalDistanceText: string;
   mapsUrl: string;
   source: "google" | "unavailable";
-  warning?: string;
 };
 
 function coords(stop: MapStop) {
@@ -83,8 +82,6 @@ export function googleMapsDirectionsUrl(driver: Driver): string {
     .slice(1, -1)
     .map((stop) => coords(stop))
     .join("|");
-  const url = new URL("https://www.google.com/maps/dir/");
-  // Prefer the query form for reliability across clients.
   const params = new URLSearchParams({
     api: "1",
     origin,
@@ -108,6 +105,20 @@ function formatDistance(meters: number) {
   return `${(meters / 1000).toFixed(1)} km`;
 }
 
+function emptyPlan(driver: Driver, stops: MapStop[], mapsUrl: string): DriverRoutePlan {
+  return {
+    driver,
+    stops,
+    legs: [],
+    totalDurationSeconds: 0,
+    totalDurationText: "—",
+    totalDistanceMeters: 0,
+    totalDistanceText: "—",
+    mapsUrl,
+    source: "unavailable",
+  };
+}
+
 type DirectionsResponse = {
   status: string;
   error_message?: string;
@@ -129,18 +140,7 @@ export async function fetchDriverRoutePlan(driver: Driver): Promise<DriverRouteP
     process.env["GOOGLE_API_KEY"];
 
   if (!key) {
-    return {
-      driver,
-      stops,
-      legs: [],
-      totalDurationSeconds: 0,
-      totalDurationText: "—",
-      totalDistanceMeters: 0,
-      totalDistanceText: "—",
-      mapsUrl,
-      source: "unavailable",
-      warning: "Falta GOOGLE_MAPS_API_KEY para tiempos en vivo.",
-    };
+    return emptyPlan(driver, stops, mapsUrl);
   }
 
   const origin = coords(stops[0]!);
@@ -163,34 +163,12 @@ export async function fetchDriverRoutePlan(driver: Driver): Promise<DriverRouteP
 
   const response = await fetch(url);
   if (!response.ok) {
-    return {
-      driver,
-      stops,
-      legs: [],
-      totalDurationSeconds: 0,
-      totalDurationText: "—",
-      totalDistanceMeters: 0,
-      totalDistanceText: "—",
-      mapsUrl,
-      source: "unavailable",
-      warning: `Google Maps respondió ${response.status}.`,
-    };
+    return emptyPlan(driver, stops, mapsUrl);
   }
 
   const data = (await response.json()) as DirectionsResponse;
   if (data.status !== "OK" || !data.routes?.[0]?.legs) {
-    return {
-      driver,
-      stops,
-      legs: [],
-      totalDurationSeconds: 0,
-      totalDurationText: "—",
-      totalDistanceMeters: 0,
-      totalDistanceText: "—",
-      mapsUrl,
-      source: "unavailable",
-      warning: data.error_message || `Directions: ${data.status}`,
-    };
+    return emptyPlan(driver, stops, mapsUrl);
   }
 
   const apiLegs = data.routes[0].legs;

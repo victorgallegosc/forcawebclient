@@ -1,6 +1,6 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, ExternalLink, MapPin, Navigation } from "lucide-react";
+import { ArrowLeft, ExternalLink, Navigation } from "lucide-react";
 import { useMemo } from "react";
 import { z } from "zod";
 
@@ -9,13 +9,11 @@ import { LeagueRetryError } from "@/components/league-error";
 import { TeamName, isUs } from "@/components/league-bits";
 import { resultLabel, shortTeamName } from "@/lib/league-helpers";
 import { driverRouteQuery, rideStateQuery, scheduleQuery } from "@/lib/queries";
-import { RIDE_STOPS } from "@/lib/rides/maps";
 import {
   computeRotation,
   formatDay,
   type Driver,
 } from "@/lib/rides/rotation";
-import { OUR_TEAM_SHORT } from "@/lib/zione/constants";
 import type { GroupSchedule, Match } from "@/lib/zione/types";
 
 const searchSchema = z.object({
@@ -131,48 +129,44 @@ function PartidoPage() {
     >
       <Link
         to="/calendario"
-        className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-4" /> Calendario
       </Link>
 
-      <div className="grid animate-rise gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <div className="grid animate-rise gap-8 lg:grid-cols-[1.2fr_1fr]">
         <Panel>
           <SectionLabel>Marcador</SectionLabel>
-          <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-            <div className="min-w-0 text-right">
-              <TeamName team={match.home} className="text-xl sm:text-2xl" />
-              {isUs(match.home) ? (
-                <p className="mt-1 text-[11px] uppercase tracking-wider text-primary">
-                  {OUR_TEAM_SHORT}
-                </p>
-              ) : null}
+          <div className="mt-4 flex items-center gap-2.5 sm:gap-3">
+            <div className="min-w-0 flex-1 text-right">
+              <TeamName
+                team={match.home}
+                className="text-[13px] leading-tight sm:text-sm"
+              />
             </div>
-            <div className="rounded-lg bg-background px-4 py-3 text-center shadow-[inset_0_0_0_1px_var(--color-border)]">
-              <p className="display-title text-3xl tabular-nums sm:text-4xl">
+            <div className="shrink-0 rounded-lg bg-background px-2.5 py-1.5 text-center shadow-[inset_0_0_0_1px_var(--color-border)] sm:px-3 sm:py-2">
+              <p className="display-title text-xl tabular-nums leading-none sm:text-2xl">
                 {played ? `${match.homeGoals} – ${match.awayGoals}` : "vs"}
               </p>
               {!played ? (
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 text-[10px] text-muted-foreground">
                   {match.time || "Por definir"}
                 </p>
               ) : null}
             </div>
-            <div className="min-w-0">
-              <TeamName team={match.away} className="text-xl sm:text-2xl" />
-              {isUs(match.away) ? (
-                <p className="mt-1 text-[11px] uppercase tracking-wider text-primary">
-                  {OUR_TEAM_SHORT}
-                </p>
-              ) : null}
+            <div className="min-w-0 flex-1">
+              <TeamName
+                team={match.away}
+                className="text-[13px] leading-tight sm:text-sm"
+              />
             </div>
           </div>
 
           {outcome ? (
-            <p className="mt-5 text-sm font-semibold text-muted-foreground">{outcome}</p>
+            <p className="mt-3 text-sm font-medium text-muted-foreground">{outcome}</p>
           ) : null}
 
-          <dl className="mt-8 grid gap-3 sm:grid-cols-2">
+          <dl className="mt-6 grid gap-2 sm:grid-cols-2">
             {[
               ["Jornada", match.round],
               ["Hora", match.time || "—"],
@@ -181,13 +175,11 @@ function PartidoPage() {
               ["Estado", match.status || "—"],
               ["Fecha", match.date || formatDay(iso)],
             ].map(([label, value]) => (
-              <div key={String(label)} className="rounded-lg bg-secondary/45 px-4 py-3">
-                <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              <div key={String(label)} className="rounded-lg bg-secondary/45 px-3 py-2.5">
+                <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   {label}
                 </dt>
-                <dd className="mt-1 truncate font-semibold" title={String(value)}>
-                  {value}
-                </dd>
+                <dd className="mt-0.5 text-sm font-semibold leading-snug">{value}</dd>
               </div>
             ))}
           </dl>
@@ -197,24 +189,23 @@ function PartidoPage() {
           <Panel>
             <SectionLabel>Ride</SectionLabel>
             {rideDay?.cancelled ? (
-              <p className="mt-4 text-sm text-muted-foreground">
-                Sin ride este sábado{rideDay.note ? `: ${rideDay.note}` : "."}
+              <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground">
+                Sin ride este sábado.
               </p>
             ) : (
               <>
-                <p className="display-title mt-3 text-4xl">{driver ?? "Por definir"}</p>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="display-title mt-4 text-4xl md:text-5xl">
+                  {driver ?? "Por definir"}
+                </p>
+                <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
                   {rideDay?.actualDriver
                     ? rideDay.covered
-                      ? `Dio el ride (le tocaba a ${rideDay.driver})`
+                      ? `Dio el ride (le tocaba a ${rideDay.dueDriver})`
                       : "Dio el ride"
                     : rideDay?.driver
                       ? "Le toca el ride"
                       : "Aún no hay rol para este día"}
                 </p>
-                {rideDay?.note ? (
-                  <p className="mt-3 rounded-lg bg-accent/20 px-3 py-2 text-sm">{rideDay.note}</p>
-                ) : null}
               </>
             )}
           </Panel>
@@ -232,66 +223,64 @@ function DriverRouteSection({ driver }: { driver: Driver }) {
   const { data: routePlan } = useSuspenseQuery(driverRouteQuery(driver));
 
   return (
-    <section className="mt-10 animate-fade-in border-t border-border/60 pt-10">
-      <SectionLabel>Trayecto · Google Maps</SectionLabel>
-      <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
+    <section className="mt-12 animate-fade-in border-t border-border/50 pt-12">
+      <SectionLabel>Trayecto</SectionLabel>
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="text-2xl">Ruta de {driver}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Tiempo estimado del recorrido completo hasta las canchas.
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+            Resumen del recorrido hasta las canchas.
           </p>
         </div>
         <a
           href={routePlan.mapsUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-2 rounded-md bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
+          className="inline-flex items-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-90"
         >
-          Abrir en Maps <ExternalLink className="size-4" />
+          Abrir en Google Maps <ExternalLink className="size-4" />
         </a>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-[1fr_1.2fr]">
+      <div className="mt-8 grid gap-5 md:grid-cols-[1fr_1.2fr]">
         <Panel>
           <div className="flex items-baseline justify-between gap-3">
             <div>
-              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total</p>
-              <p className="display-title mt-1 text-4xl">{routePlan.totalDurationText}</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                Tiempo estimado
+              </p>
+              <p className="display-title mt-2 text-4xl">{routePlan.totalDurationText}</p>
             </div>
             <div className="text-right">
-              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Distancia</p>
-              <p className="mt-1 text-lg font-semibold">{routePlan.totalDistanceText}</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                Distancia
+              </p>
+              <p className="mt-2 text-lg font-semibold">{routePlan.totalDistanceText}</p>
             </div>
           </div>
-          {routePlan.warning ? (
-            <p className="mt-4 text-sm text-muted-foreground">{routePlan.warning}</p>
-          ) : (
-            <p className="mt-4 text-xs text-muted-foreground">
-              Datos de Google Maps Directions · tráfico al momento de consultar.
+          {routePlan.source === "google" ? (
+            <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
+              Estimado con tráfico al momento de consultar.
             </p>
-          )}
+          ) : null}
         </Panel>
 
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {routePlan.stops.map((stop, index) => (
             <div
               key={stop.id}
-              className="flex items-start gap-3 rounded-lg bg-secondary/45 px-4 py-3"
+              className="flex items-start gap-3 rounded-xl bg-secondary/45 px-4 py-3.5"
             >
-              <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-background text-xs font-bold shadow-[inset_0_0_0_1px_var(--color-border)]">
+              <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-background text-xs font-bold shadow-[inset_0_0_0_1px_var(--color-border)]">
                 {index + 1}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">{stop.label}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  <MapPin className="mr-1 inline size-3" />
-                  {stop.plusCode}
-                </p>
                 {routePlan.legs[index] ? (
-                  <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Navigation className="size-3" />
-                    {routePlan.legs[index]!.durationText} · {routePlan.legs[index]!.distanceText} →{" "}
-                    {routePlan.legs[index]!.to.label}
+                    {routePlan.legs[index]!.durationText} · {routePlan.legs[index]!.distanceText}{" "}
+                    → {routePlan.legs[index]!.to.label}
                   </p>
                 ) : null}
               </div>
@@ -299,12 +288,6 @@ function DriverRouteSection({ driver }: { driver: Driver }) {
           ))}
         </div>
       </div>
-
-      <p className="mt-6 text-xs text-muted-foreground">
-        Paradas: {Object.values(RIDE_STOPS)
-          .map((stop) => stop.label)
-          .join(" · ")}
-      </p>
     </section>
   );
 }
