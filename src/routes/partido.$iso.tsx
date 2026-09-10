@@ -14,7 +14,6 @@ import {
   formatDay,
   type Driver,
 } from "@/lib/rides/rotation";
-import { OUR_TEAM_SHORT } from "@/lib/zione/constants";
 import type { GroupSchedule, Match } from "@/lib/zione/types";
 
 const searchSchema = z.object({
@@ -138,32 +137,35 @@ function PartidoPage() {
       <div className="grid animate-rise gap-8 lg:grid-cols-[1.2fr_1fr]">
         <Panel>
           <SectionLabel>Marcador</SectionLabel>
-          <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-            <div className="min-w-0 text-right">
-              <TeamName team={match.home} className="text-lg leading-snug sm:text-2xl" />
-              {isUs(match.home) ? (
-                <p className="mt-1.5 text-[11px] uppercase tracking-wider text-primary">
-                  {OUR_TEAM_SHORT}
-                </p>
-              ) : null}
+          {/* Stacked layout: full team names stay readable; no duplicate “Sunderland” label. */}
+          <div className="mt-6 flex flex-col items-stretch gap-3">
+            <div className="rounded-xl bg-secondary/40 px-4 py-3 text-center">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                Local
+              </p>
+              <TeamName
+                team={match.home}
+                className="mt-1 text-base leading-snug sm:text-lg"
+              />
             </div>
-            <div className="rounded-xl bg-background px-4 py-3.5 text-center shadow-[inset_0_0_0_1px_var(--color-border)]">
-              <p className="display-title text-3xl tabular-nums sm:text-4xl">
+            <div className="mx-auto w-full max-w-[10rem] rounded-xl bg-background px-3 py-2.5 text-center shadow-[inset_0_0_0_1px_var(--color-border)]">
+              <p className="display-title text-2xl tabular-nums sm:text-3xl">
                 {played ? `${match.homeGoals} – ${match.awayGoals}` : "vs"}
               </p>
               {!played ? (
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   {match.time || "Por definir"}
                 </p>
               ) : null}
             </div>
-            <div className="min-w-0">
-              <TeamName team={match.away} className="text-lg leading-snug sm:text-2xl" />
-              {isUs(match.away) ? (
-                <p className="mt-1.5 text-[11px] uppercase tracking-wider text-primary">
-                  {OUR_TEAM_SHORT}
-                </p>
-              ) : null}
+            <div className="rounded-xl bg-secondary/40 px-4 py-3 text-center">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                Visitante
+              </p>
+              <TeamName
+                team={match.away}
+                className="mt-1 text-base leading-snug sm:text-lg"
+              />
             </div>
           </div>
 
