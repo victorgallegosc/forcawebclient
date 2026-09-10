@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { DataNote, FilterChip, PageShell, Panel, SectionLabel } from "@/components/app-shell";
+import { LeagueRetryError } from "@/components/league-error";
 import { cardsQuery, scorersQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { OUR_TEAM } from "@/lib/zione/constants";
@@ -22,16 +23,17 @@ export const Route = createFileRoute("/goleo")({
     ],
   }),
   loader: async ({ context }) => {
-    await Promise.all([
+    await Promise.allSettled([
       context.queryClient.ensureQueryData(scorersQuery),
       context.queryClient.ensureQueryData(cardsQuery),
     ]);
   },
   component: GoleoPage,
   errorComponent: () => (
-    <PageShell title="Goleo" description="No pudimos leer las estadísticas ahora mismo.">
-      <Panel>Intenta de nuevo en unos minutos.</Panel>
-    </PageShell>
+    <LeagueRetryError
+      title="Goleo"
+      description="No pudimos leer las estadísticas ahora mismo."
+    />
   ),
 });
 

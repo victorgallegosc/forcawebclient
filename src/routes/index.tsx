@@ -4,14 +4,29 @@ import { ArrowRight } from "lucide-react";
 import { useMemo } from "react";
 
 import { DataNote, PageShell, Panel, SectionLabel } from "@/components/app-shell";
+import { LeagueRetryError } from "@/components/league-error";
 import { MatchMeta, MatchRow, StandingsTable, isUs } from "@/components/league-bits";
+import {
+  countdownLabel,
+  findStanding,
+  formFromMatches,
+  gapToLeader,
+  headToHead,
+  isMatchday,
+  opponentName,
+  resultLabel,
+  shortTeamName,
+} from "@/lib/league-helpers";
 import { rideStateQuery, scheduleQuery, standingsQuery } from "@/lib/queries";
 import { computeRotation, formatDay, todayInMonterrey } from "@/lib/rides/rotation";
 import {
   CATEGORY_NAME,
   OUR_GROUP_NAME,
+  OUR_TEAM,
+  OUR_TEAM_SHORT,
   TOURNAMENT_NAME,
 } from "@/lib/zione/constants";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -20,7 +35,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Próximo partido, posición en el grupo y turno de aventón — F7 Sabatino Vespertino.",
+          "Próximo partido, forma reciente, rival y turno de aventón — F7 Sabatino Vespertino, Grupo 4 B.",
       },
       { property: "og:title", content: "Cancha · Fin de Semana 2026" },
       {
@@ -31,16 +46,17 @@ export const Route = createFileRoute("/")({
   }),
   loader: async ({ context }) => {
     void context.queryClient.ensureQueryData(rideStateQuery).catch(() => null);
-    await Promise.all([
+    await Promise.allSettled([
       context.queryClient.ensureQueryData(scheduleQuery),
       context.queryClient.ensureQueryData(standingsQuery),
     ]);
   },
   component: Index,
   errorComponent: () => (
-    <PageShell title="Cancha" description="No pudimos leer los datos de la liga ahora mismo.">
-      <Panel>Intenta de nuevo en unos minutos.</Panel>
-    </PageShell>
+    <LeagueRetryError
+      title="Cancha"
+      description="No pudimos leer los datos de la liga ahora mismo."
+    />
   ),
 });
 
@@ -52,15 +68,16 @@ function Index() {
   const today = todayInMonterrey();
 
   const ourMatches = useMemo(() => {
-    const all = schedule.data
+    return schedule.data
       .flatMap((group) => group.weeks.flatMap((week) => week.matches))
       .filter((match) => isUs(match.home) || isUs(match.away))
       .sort((a, b) => (a.iso ?? "").localeCompare(b.iso ?? ""));
-    return all;
   }, [schedule]);
 
   const nextMatch = ourMatches.find((match) => (match.iso ?? "") >= today) ?? null;
-  const lastMatch = [...ourMatches].reverse().find((match) => match.homeGoals !== null) ?? null;
+  const lastMatch =
+    [...ourMatches].reverse().find((match) => match.homeGoals !== null) ?? null;
+  const form = useMemo(() => formFromMatches(ourMatches, 5), [ourMatches]);
 
   const rotation = useMemo(
     () =>
@@ -72,16 +89,17 @@ function Index() {
   );
   const nextDriver = rotation.days.find((day) => day.day >= today && !day.cancelled);
 
-  const ourGroup = standings.data.find((group) => group.groupName === OUR_GROUP_NAME);
+  const ourGroup = standings?.data.find((group) => group.groupName === OUR_GROUP_NAME);
   const ourRow = ourGroup?.rows.find((row) => isUs(row.team));
-
-  const heroLine = nextMatch
-    ? `${nextMatch.date} · ${nextMatch.time} hrs`
-    : "Sin partidos programados";
+  const rival = nextMatch ? opponentName(nextMatch) : null;
+  const rivalRow = rival && ourGroup ? findStanding(ourGroup.rows, rival) : null;
+  const kickoff = countdownLabel(nextMatch?.iso ?? null, today);
+  const matchday = isMatchday(nextMatch?.iso ?? null, today);
+  const race = ourGroup ? gapToLeader(ourGroup.rows, OUR_TEAM) : null;
+  const h2h = rival ? headToHead(ourMatches, rival) : null;
 
   return (
     <PageShell title="Cancha" hero>
-      {/* Hero: one composition — brand, line, support, CTAs, field atmosphere */}
       <section className="relative -mx-4 overflow-hidden border-b border-border/50 px-4 pb-14 pt-10 md:-mx-6 md:px-6 md:pb-16 md:pt-14">
         <div
           aria-hidden
@@ -92,9 +110,18 @@ function Index() {
           }}
         />
         <div className="animate-rise">
-          <p className="display-title text-6xl md:text-8xl tracking-tight">Cancha</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="display-title text-6xl tracking-tight md:text-8xl">Cancha</p>
+            {matchday ? (
+              <span className="rounded-md bg-primary px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-foreground">
+                Día de partido
+              </span>
+            ) : null}
+          </div>
           <h1 className="mt-5 max-w-lg text-2xl font-semibold leading-snug tracking-tight md:text-3xl">
-            {nextMatch ? "Tu próximo sábado, claro." : "Todo listo para el torneo."}
+            {nextMatch
+              ? `${kickoff ?? "Próximo sábado"} contra ${shortTeamName(rival ?? "")}.`
+              : "Todo listo para el torneo."}
           </h1>
           <p className="mt-3 max-w-md text-[15px] leading-relaxed text-muted-foreground">
             {CATEGORY_NAME} · {OUR_GROUP_NAME}. {TOURNAMENT_NAME}.
@@ -113,10 +140,6 @@ function Index() {
               Quién maneja
             </Link>
           </div>
-          <p className="mt-8 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            {heroLine}
-            {nextMatch?.place ? ` · ${nextMatch.place}` : ""}
-          </p>
         </div>
       </section>
 
@@ -124,16 +147,109 @@ function Index() {
         <section>
           <SectionLabel>Próximo partido</SectionLabel>
           {nextMatch ? (
-            <div className="mt-4">
-              <MatchRow match={nextMatch} />
-              <MatchMeta match={nextMatch} />
-            </div>
+            <Panel className="mt-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                    {nextMatch.round}
+                    {nextMatch.stage ? ` · ${nextMatch.stage}` : ""}
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {nextMatch.date} · {nextMatch.time} hrs
+                    {nextMatch.place ? ` · ${nextMatch.place}` : ""}
+                  </p>
+                </div>
+                {kickoff ? (
+                  <span className="rounded-md bg-secondary px-3 py-1.5 text-sm font-semibold">
+                    {kickoff}
+                  </span>
+                ) : null}
+              </div>
+              <div className="mt-5">
+                <MatchRow match={nextMatch} />
+              </div>
+              {rivalRow ? (
+                <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-border/60 pt-5 sm:grid-cols-4">
+                  <div>
+                    <dt className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                      Rival
+                    </dt>
+                    <dd className="mt-1 font-semibold">{shortTeamName(rivalRow.team)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                      Posición
+                    </dt>
+                    <dd className="display-title mt-1 text-2xl">{rivalRow.position}°</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                      Puntos
+                    </dt>
+                    <dd className="display-title mt-1 text-2xl">{rivalRow.points}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                      Forma
+                    </dt>
+                    <dd className="mt-1 text-sm font-semibold">
+                      {rivalRow.won}V · {rivalRow.drawn}E · {rivalRow.lost}D
+                    </dd>
+                  </div>
+                </dl>
+              ) : null}
+              {h2h && h2h.played > 0 ? (
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Cara a cara: {h2h.won}V · {h2h.drawn}E · {h2h.lost}D en este torneo.
+                </p>
+              ) : null}
+            </Panel>
           ) : (
             <p className="mt-4 text-muted-foreground">Sin partidos programados.</p>
           )}
         </section>
 
         <section className="grid gap-8 border-t border-border/60 pt-10 md:grid-cols-2">
+          <div>
+            <SectionLabel>Forma reciente</SectionLabel>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Últimos resultados de {OUR_TEAM_SHORT}.
+            </p>
+            {form.length > 0 ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {form.map((result, index) => (
+                  <span
+                    key={`${result}-${index}`}
+                    className={cn(
+                      "flex size-10 items-center justify-center rounded-md text-sm font-bold",
+                      result === "V" && "bg-primary/15 text-primary",
+                      result === "E" && "bg-secondary text-muted-foreground",
+                      result === "D" && "bg-destructive/10 text-destructive",
+                    )}
+                    title={result === "V" ? "Victoria" : result === "E" ? "Empate" : "Derrota"}
+                  >
+                    {result}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 text-muted-foreground">
+                Todavía no hay partidos jugados.
+              </p>
+            )}
+            {lastMatch ? (
+              <div className="mt-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Último · {resultLabel(lastMatch)}
+                </p>
+                <div className="mt-2">
+                  <MatchRow match={lastMatch} />
+                  <MatchMeta match={lastMatch} />
+                </div>
+              </div>
+            ) : null}
+          </div>
+
           <div>
             <SectionLabel>Aventón</SectionLabel>
             {nextDriver ? (
@@ -150,37 +266,30 @@ function Index() {
             >
               Ver rol completo <ArrowRight className="size-4" />
             </Link>
-          </div>
 
-          <div>
-            <SectionLabel>En la tabla</SectionLabel>
-            <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-5">
-              {[
-                { label: "Posición", value: ourRow ? `${ourRow.position}°` : "—" },
-                { label: "Puntos", value: ourRow?.points ?? "—" },
-                { label: "Goles a favor", value: ourRow?.goalsFor ?? "—" },
-                { label: "Diferencia", value: ourRow?.diff ?? "—" },
-              ].map((stat) => (
-                <div key={stat.label}>
-                  <dt className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    {stat.label}
-                  </dt>
-                  <dd className="display-title mt-1 text-3xl">{stat.value}</dd>
-                </div>
-              ))}
-            </dl>
+            <div className="mt-8">
+              <SectionLabel>En la tabla</SectionLabel>
+              <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-5">
+                {[
+                  { label: "Posición", value: ourRow ? `${ourRow.position}°` : "—" },
+                  { label: "Puntos", value: ourRow?.points ?? "—" },
+                  { label: "Goles a favor", value: ourRow?.goalsFor ?? "—" },
+                  {
+                    label: race?.isLeader ? "Ventaja" : "Del líder",
+                    value: race == null ? "—" : race.isLeader ? "Líder" : `-${race.gap}`,
+                  },
+                ].map((stat) => (
+                  <div key={stat.label}>
+                    <dt className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                      {stat.label}
+                    </dt>
+                    <dd className="display-title mt-1 text-3xl">{stat.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
           </div>
         </section>
-
-        {lastMatch ? (
-          <section className="border-t border-border/60 pt-10">
-            <SectionLabel>Último resultado</SectionLabel>
-            <div className="mt-4">
-              <MatchRow match={lastMatch} />
-              <MatchMeta match={lastMatch} />
-            </div>
-          </section>
-        ) : null}
 
         {ourGroup ? (
           <section className="border-t border-border/60 pt-10">

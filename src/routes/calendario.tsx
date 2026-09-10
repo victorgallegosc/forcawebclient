@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { DataNote, FilterChip, PageShell, Panel, SectionLabel } from "@/components/app-shell";
+import { LeagueRetryError } from "@/components/league-error";
 import { MatchMeta, MatchRow, isUs } from "@/components/league-bits";
 import { scheduleQuery } from "@/lib/queries";
 import { GROUPS } from "@/lib/zione/constants";
@@ -26,9 +27,10 @@ export const Route = createFileRoute("/calendario")({
   loader: ({ context }) => context.queryClient.ensureQueryData(scheduleQuery),
   component: CalendarioPage,
   errorComponent: () => (
-    <PageShell title="Calendario" description="No pudimos leer el rol de juegos ahora mismo.">
-      <Panel>Intenta de nuevo en unos minutos.</Panel>
-    </PageShell>
+    <LeagueRetryError
+      title="Calendario"
+      description="No pudimos leer el rol de juegos ahora mismo."
+    />
   ),
 });
 

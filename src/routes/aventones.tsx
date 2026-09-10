@@ -4,6 +4,7 @@ import { Car, RotateCcw, Undo2, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { PageShell, Panel, SectionLabel } from "@/components/app-shell";
+import { LeagueRetryError } from "@/components/league-error";
 import { rideStateQuery, scheduleQuery } from "@/lib/queries";
 import {
   clearOverride,
@@ -43,9 +44,10 @@ export const Route = createFileRoute("/aventones")({
   },
   component: AventonesPage,
   errorComponent: () => (
-    <PageShell title="Aventones" description="No pudimos cargar los turnos ahora mismo.">
-      <Panel>Intenta de nuevo en unos minutos.</Panel>
-    </PageShell>
+    <LeagueRetryError
+      title="Aventones"
+      description="No pudimos cargar los turnos ahora mismo."
+    />
   ),
 });
 

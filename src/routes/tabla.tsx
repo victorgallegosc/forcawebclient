@@ -2,6 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { DataNote, Panel, PageShell, SectionLabel } from "@/components/app-shell";
+import { LeagueRetryError } from "@/components/league-error";
 import { StandingsTable } from "@/components/league-bits";
 import { standingsQuery } from "@/lib/queries";
 import { CATEGORY_NAME, TOURNAMENT_NAME } from "@/lib/zione/constants";
@@ -25,9 +26,10 @@ export const Route = createFileRoute("/tabla")({
   loader: ({ context }) => context.queryClient.ensureQueryData(standingsQuery),
   component: TablaPage,
   errorComponent: () => (
-    <PageShell title="Tabla" description="No pudimos leer la tabla de la liga en este momento.">
-      <Panel>Intenta de nuevo en unos minutos.</Panel>
-    </PageShell>
+    <LeagueRetryError
+      title="Tabla"
+      description="No pudimos leer la tabla de la liga en este momento."
+    />
   ),
 });
 
