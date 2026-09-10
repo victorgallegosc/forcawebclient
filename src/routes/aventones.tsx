@@ -31,7 +31,7 @@ export const Route = createFileRoute("/aventones")({
       {
         name: "description",
         content:
-          "Quién da el ride cada sábado: rotación entre Víctor, Mau y Gabo, con cambios y días sin ride.",
+          "Quién da el ride cada sábado: rotación Gabo → Mau → Víctor, con cambios y días sin ride.",
       },
       { property: "og:title", content: "Ride · Cancha" },
       { property: "og:description", content: "A quién le toca el ride este sábado." },
@@ -108,7 +108,7 @@ function AventonesPage() {
     <PageShell
       eyebrow="Rol de rides"
       title="Ride"
-      description="Rotación entre Víctor, Mau y Gabo los sábados que juega el equipo."
+      description="Rotación Gabo → Mau → Víctor los sábados que juega el equipo."
     >
       <div className="grid animate-rise gap-8 md:grid-cols-[1.25fr_1fr]">
         <Panel interactive>
