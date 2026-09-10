@@ -7,29 +7,47 @@ import { cn } from "@/lib/utils";
 
 export const isUs = (team: string) => team.trim() === OUR_TEAM;
 
+export function teamPath(team: string) {
+  return {
+    to: "/equipo/$name" as const,
+    params: { name: team },
+  };
+}
+
 export function TeamName({
   team,
   className,
   truncate = false,
+  link = true,
 }: {
   team: string;
   className?: string;
   /** Prefer wrapping so full names stay readable on match rows. */
   truncate?: boolean;
+  /** When false, render plain text (e.g. inside another interactive control). */
+  link?: boolean;
 }) {
   const name = shortTeamName(team);
+  const classes = cn(
+    "block font-semibold leading-snug",
+    truncate ? "truncate" : "whitespace-normal break-words",
+    isUs(team) ? "text-primary" : "text-foreground",
+    link && "transition-opacity hover:opacity-75",
+    className,
+  );
+
+  if (!link) {
+    return (
+      <span className={classes} title={name}>
+        {name}
+      </span>
+    );
+  }
+
   return (
-    <span
-      className={cn(
-        "block font-semibold leading-snug",
-        truncate ? "truncate" : "whitespace-normal break-words",
-        isUs(team) ? "text-primary" : "text-foreground",
-        className,
-      )}
-      title={name}
-    >
+    <Link {...teamPath(team)} className={classes} title={name} onClick={(event) => event.stopPropagation()}>
       {name}
-    </span>
+    </Link>
   );
 }
 
@@ -94,45 +112,39 @@ function matchPath(match: Match) {
 export function MatchRow({ match }: { match: Match }) {
   const played = match.homeGoals !== null && match.awayGoals !== null;
   const path = matchPath(match);
-  const body = (
-    <>
+  const ours = isUs(match.home) || isUs(match.away);
+
+  const score = (
+    <div className="shrink-0 rounded-md bg-background px-2.5 py-1.5 text-center text-sm font-semibold tabular-nums shadow-[inset_0_0_0_1px_var(--color-border)] sm:px-3">
+      {played ? `${match.homeGoals} – ${match.awayGoals}` : match.time || "vs"}
+    </div>
+  );
+
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 items-center gap-2 rounded-lg bg-secondary/45 px-3 py-3.5 sm:gap-3 sm:px-4",
+        ours && "bg-primary/8 outline outline-1 outline-primary/20",
+      )}
+    >
       <div className="min-w-0 flex-1 text-right">
         <TeamName team={match.home} />
       </div>
-      <div className="shrink-0 rounded-md bg-background px-2.5 py-1.5 text-center text-sm font-semibold tabular-nums shadow-[inset_0_0_0_1px_var(--color-border)] sm:px-3">
-        {played ? `${match.homeGoals} – ${match.awayGoals}` : match.time || "vs"}
-      </div>
+      {path ? (
+        <Link
+          {...path}
+          className="shrink-0 transition-opacity hover:opacity-80"
+          aria-label="Ver partido"
+        >
+          {score}
+        </Link>
+      ) : (
+        score
+      )}
       <div className="min-w-0 flex-1">
         <TeamName team={match.away} />
       </div>
-    </>
-  );
-
-  if (!path) {
-    return (
-      <div
-        className={cn(
-          "flex min-w-0 items-center gap-2 rounded-lg bg-secondary/45 px-3 py-3.5 sm:gap-3 sm:px-4",
-          (isUs(match.home) || isUs(match.away)) &&
-            "bg-primary/8 outline outline-1 outline-primary/20",
-        )}
-      >
-        {body}
-      </div>
-    );
-  }
-
-  return (
-    <Link
-      {...path}
-      className={cn(
-        "flex min-w-0 items-center gap-2 rounded-lg bg-secondary/45 px-3 py-3.5 transition-colors hover:bg-secondary/70 sm:gap-3 sm:px-4",
-        (isUs(match.home) || isUs(match.away)) &&
-          "bg-primary/8 outline outline-1 outline-primary/20 hover:bg-primary/12",
-      )}
-    >
-      {body}
-    </Link>
+    </div>
   );
 }
 
