@@ -38,10 +38,9 @@ async function sleep(ms: number) {
 }
 
 /**
- * Zione has no public API — we scrape the official console HTML from
- * main4.asp?dts=DTS094 and its subpages. Netlify cold starts sometimes
- * hit brief timeouts, so we retry with a browser-like fingerprint and
- * keep each attempt short enough to fall back to seed/cache.
+ * Zione has no public API — we always scrape the official console HTML
+ * (main4.asp?dts=DTS094 and subpages) for live data. Retries with a
+ * browser-like fingerprint cover brief Netlify cold-start timeouts.
  */
 async function loadPage(url: string, attempt = 1): Promise<CheerioAPI> {
   try {
@@ -54,16 +53,15 @@ async function loadPage(url: string, attempt = 1): Promise<CheerioAPI> {
         referer: `${ZIONE_BASE}/main4.asp?dts=${DTS}`,
         "cache-control": "no-cache",
       },
-      // Keep attempts short so serverless can fall back before the budget runs out.
-      signal: AbortSignal.timeout(7_000),
+      signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) throw new Error(`Zione responded ${response.status} for ${url}`);
     const html = await response.text();
     if (html.length < 800) throw new Error(`Zione returned an empty page for ${url}`);
     return cheerio.load(html);
   } catch (error) {
-    if (attempt >= 2) throw error;
-    await sleep(250 * attempt);
+    if (attempt >= 3) throw error;
+    await sleep(300 * attempt);
     return loadPage(url, attempt + 1);
   }
 }
