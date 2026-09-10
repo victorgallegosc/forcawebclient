@@ -149,7 +149,7 @@ function AventonesPage() {
         <div>
           <SectionLabel>Rides a favor</SectionLabel>
           <p className="mt-2 text-xs text-muted-foreground">
-            Si cubres el ride de alguien, te saltas el tuyo después.
+            Si cubres el ride de alguien, queda registrado como ajuste y suma a favor.
           </p>
           <div className="mt-4 space-y-1">
             {DRIVERS.map((driver) => (
@@ -274,33 +274,45 @@ function AventonesPage() {
         <SectionLabel>Pasado</SectionLabel>
         <h2 className="mt-2 text-2xl">Historial</h2>
         <div className="mt-5 space-y-2">
-          {past.slice(0, 8).map((day) => (
+          {past.map((day) => (
             <div
               key={day.day}
-              className="flex flex-wrap items-center gap-3 rounded-lg bg-secondary/45 px-4 py-3.5"
+              className="rounded-lg bg-secondary/45 px-4 py-3.5"
             >
-              <span className="text-sm text-muted-foreground">{formatDay(day.day)}</span>
-              <span className="font-semibold">
-                {day.cancelled ? "Sin partido" : (day.actualDriver ?? day.driver)}
-              </span>
-              {day.actualDriver && day.actualDriver !== day.driver ? (
-                <span className="text-xs text-muted-foreground">
-                  (le tocaba a {day.driver})
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-sm text-muted-foreground">{formatDay(day.day)}</span>
+                <span className="font-semibold">
+                  {day.cancelled
+                    ? "Sin ride"
+                    : `Dio el ride: ${day.actualDriver ?? day.driver}`}
                 </span>
-              ) : null}
-              {!day.cancelled && !day.actualDriver ? (
-                <div className="ml-auto flex flex-wrap gap-2">
-                  {DRIVERS.map((driver) => (
-                    <button
-                      type="button"
-                      key={driver}
-                      onClick={() => run.mutate(() => setActualDriver(day.day, driver))}
-                      className="rounded-md bg-background/90 px-3 py-1.5 text-xs font-medium shadow-[inset_0_0_0_1px_var(--color-border)]"
-                    >
-                      dio el ride {driver}
-                    </button>
-                  ))}
-                </div>
+                {day.covered ? (
+                  <span className="rounded-md bg-accent/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">
+                    ajuste
+                  </span>
+                ) : null}
+                {day.covered ? (
+                  <span className="text-xs text-muted-foreground">
+                    (le tocaba a {day.driver})
+                  </span>
+                ) : null}
+                {!day.cancelled && !day.actualDriver ? (
+                  <div className="ml-auto flex flex-wrap gap-2">
+                    {DRIVERS.map((driver) => (
+                      <button
+                        type="button"
+                        key={driver}
+                        onClick={() => run.mutate(() => setActualDriver(day.day, driver))}
+                        className="rounded-md bg-background/90 px-3 py-1.5 text-xs font-medium shadow-[inset_0_0_0_1px_var(--color-border)]"
+                      >
+                        dio el ride {driver}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              {day.note ? (
+                <p className="mt-2 text-xs text-muted-foreground">{day.note}</p>
               ) : null}
             </div>
           ))}

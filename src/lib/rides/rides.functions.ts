@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { mergeRideAdjustments, TOURNAMENT_RIDE_SEED } from "./history";
 import { DRIVERS, formatDay, type RideAdjustment } from "./rotation";
 
 export type RideLogEntry = {
@@ -31,7 +32,7 @@ async function admin() {
 
 async function readState(): Promise<RideState> {
   if (!ridesDbEnabled()) {
-    return { adjustments: [], log: [] };
+    return { adjustments: mergeRideAdjustments(TOURNAMENT_RIDE_SEED, []), log: [] };
   }
   const db = await admin();
   const [days, log] = await Promise.all([
@@ -48,7 +49,10 @@ async function readState(): Promise<RideState> {
   if (days.error) throw new Error(days.error.message);
   if (log.error) throw new Error(log.error.message);
   return {
-    adjustments: (days.data ?? []) as RideAdjustment[],
+    adjustments: mergeRideAdjustments(
+      TOURNAMENT_RIDE_SEED,
+      (days.data ?? []) as RideAdjustment[],
+    ),
     log: (log.data ?? []) as unknown as RideLogEntry[],
   };
 }

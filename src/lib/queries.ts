@@ -2,6 +2,8 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { getCards, getSchedule, getScorers, getStandings } from "./league.functions";
 import { getRideState } from "./rides/rides.functions";
+import { getDriverRouteFn } from "./rides/maps.functions";
+import type { Driver } from "./rides/rotation";
 
 export const standingsQuery = queryOptions({
   queryKey: ["standings"],
@@ -41,3 +43,11 @@ export const rideStateQuery = queryOptions({
   queryFn: () => getRideState(),
   staleTime: 30 * 1000,
 });
+
+export function driverRouteQuery(driver: Driver) {
+  return queryOptions({
+    queryKey: ["driver-route", driver],
+    queryFn: () => getDriverRouteFn({ data: { driver } }),
+    staleTime: 10 * 60 * 1000,
+  });
+}
