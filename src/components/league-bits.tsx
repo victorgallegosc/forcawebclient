@@ -7,12 +7,22 @@ import { cn } from "@/lib/utils";
 
 export const isUs = (team: string) => team.trim() === OUR_TEAM;
 
-export function TeamName({ team, className }: { team: string; className?: string }) {
+export function TeamName({
+  team,
+  className,
+  truncate = false,
+}: {
+  team: string;
+  className?: string;
+  /** Prefer wrapping so full names stay readable on match rows. */
+  truncate?: boolean;
+}) {
   const name = shortTeamName(team);
   return (
     <span
       className={cn(
-        "block truncate font-semibold",
+        "block font-semibold leading-snug",
+        truncate ? "truncate" : "whitespace-normal break-words",
         isUs(team) ? "text-primary" : "text-foreground",
         className,
       )}
@@ -51,7 +61,7 @@ export function StandingsTable({ rows }: { rows: StandingRow[] }) {
               )}
             >
               <td className="rounded-l-lg px-3 py-3 text-muted-foreground">{row.position}</td>
-              <td className="max-w-[10rem] px-3 py-3 sm:max-w-[14rem]">
+              <td className="max-w-[12rem] px-3 py-3 sm:max-w-[16rem]">
                 <TeamName team={row.team} />
               </td>
               <td className="px-2 py-3 text-center text-muted-foreground">{row.played}</td>

@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { CalendarDays, Car, Home, Table2, Target } from "lucide-react";
-import type { ReactNode } from "react";
+import { CalendarDays, Car, Home, Moon, Sun, Table2, Target } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,39 @@ const NAV = [
   { to: "/goleo", label: "Goleo", icon: Target },
   { to: "/aventones", label: "Ride", icon: Car },
 ] as const;
+
+function ThemeToggle({ className }: { className?: string }) {
+  const [dark, setDark] = useState(false);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("cancha-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const next = stored === "dark" || (!stored && prefersDark);
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+  }, []);
+
+  function toggle() {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    window.localStorage.setItem("cancha-theme", next ? "dark" : "light");
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={dark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+      className={cn(
+        "inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
+        className,
+      )}
+    >
+      {dark ? <Sun className="size-4" strokeWidth={1.75} /> : <Moon className="size-4" strokeWidth={1.75} />}
+    </button>
+  );
+}
 
 export function SiteNav() {
   return (
@@ -25,24 +58,29 @@ export function SiteNav() {
               F7
             </span>
           </Link>
-          <nav className="flex items-center gap-0.5" aria-label="Principal">
-            {NAV.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                activeOptions={{ exact: item.to === "/" }}
-                className="relative px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                activeProps={{
-                  className:
-                    "text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary after:content-['']",
-                }}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <div className="flex items-center gap-1">
+            <nav className="flex items-center gap-0.5" aria-label="Principal">
+              {NAV.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  activeOptions={{ exact: item.to === "/" }}
+                  className="relative px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  activeProps={{
+                    className:
+                      "text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary after:content-['']",
+                  }}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+            <ThemeToggle className="ml-1" />
+          </div>
         </div>
       </header>
+
+      <ThemeToggle className="fixed bottom-[4.75rem] right-3 z-40 border border-border/70 bg-background/90 shadow-sm backdrop-blur-xl md:hidden" />
 
       <nav
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-background/90 backdrop-blur-xl md:hidden"
@@ -85,11 +123,11 @@ export function PageShell({
     <main
       className={cn(
         "mx-auto w-full max-w-5xl px-4 pb-28 md:px-6 md:pb-16",
-        hero ? "pt-0" : "pt-10 md:pt-12",
+        hero ? "pt-0" : "pt-12 md:pt-14",
       )}
     >
       {!hero ? (
-        <header className="mb-8 animate-rise">
+        <header className="mb-10 animate-rise">
           {eyebrow ? (
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
               {eyebrow}
@@ -123,8 +161,8 @@ export function Panel({
     <section
       className={cn(
         interactive
-          ? "surface-panel p-5 md:p-6"
-          : "rounded-xl border border-border/60 bg-surface/60 p-5 md:p-6",
+          ? "surface-panel p-6 md:p-7"
+          : "rounded-2xl border border-border/60 bg-surface/60 p-6 md:p-7",
         className,
       )}
     >

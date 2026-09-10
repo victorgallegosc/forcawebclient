@@ -1,20 +1,17 @@
-// Thin client-side wrappers: every mutation runs on the server, where the
-// change and its history entry are written in a single transaction.
+// Thin client wrappers: every mutation runs on the server in one transaction.
 import {
   clearOverrideFn,
   setActualDriverFn,
   setCancelledFn,
-  swapDaysFn,
+  setOverrideDriverFn,
   undoLastFn,
 } from "./rides.functions";
 import type { Driver } from "./rotation";
 
 export type { RideLogEntry, RideState } from "./rides.functions";
 
-export async function swapDays(dayA: string, driverA: string, dayB: string, driverB: string) {
-  await swapDaysFn({
-    data: { dayA, driverA: driverA as Driver, dayB, driverB: driverB as Driver },
-  });
+export async function setOverrideDriver(day: string, driver: string) {
+  await setOverrideDriverFn({ data: { day, driver: driver as Driver } });
 }
 
 export async function setCancelled(day: string, cancelled: boolean) {

@@ -12,19 +12,24 @@ export type RideAdjustment = {
 export type RideDay = {
   day: string;
   cancelled: boolean;
-  /** Who is supposed to drive (after swaps). */
+  /** Who the rotation says was due (ignores overrides). */
+  dueDriver: Driver | null;
+  /** Who is assigned to drive after Cambiar (override or due). */
   driver: Driver | null;
   /** Who actually drove, when recorded. */
   actualDriver: string | null;
   swapped: boolean;
-  /** True when someone else drove instead of the assigned driver. */
+  /** True when someone else drove instead of who was due. */
   covered: boolean;
-  note: string | null;
 };
 
 export type RotationResult = {
   days: RideDay[];
+  /** Raw cover counts. */
   credits: Record<Driver, number>;
+  /** Credits minus the minimum — when everyone is even, all are 0 (a mano). */
+  balance: Record<Driver, number>;
+  even: boolean;
 };
 
 function isDriver(value: string | null | undefined): value is Driver {
@@ -32,9 +37,9 @@ function isDriver(value: string | null | undefined): value is Driver {
 }
 
 /**
- * Round-robin Víctor → Mau → Gabo. Cancelled days do not consume a turn.
- * Covering someone else's ride grants a "ride a favor" credit (shown in UI);
- * credits are not auto-spent so the rol stays aligned with how the group counts.
+ * Round-robin Víctor → Mau → Gabo. Cancelled / sin-ride days skip the turn.
+ * Covering someone else's ride grants a favor credit. Balances are relative:
+ * if everyone has the same raw credit, they are a mano (balance 0).
  */
 export function computeRotation(
   fixtureDays: string[],
@@ -52,22 +57,22 @@ export function computeRotation(
       days.push({
         day,
         cancelled: true,
+        dueDriver: null,
         driver: null,
         actualDriver: null,
         swapped: false,
         covered: false,
-        note: entry.note ?? null,
       });
       continue;
     }
 
-    const rotationPick = DRIVERS[cursor % DRIVERS.length]!;
+    const dueDriver = DRIVERS[cursor % DRIVERS.length]!;
     cursor += 1;
 
     const override = isDriver(entry?.override_driver) ? entry!.override_driver : null;
-    const driver = (override ?? rotationPick) as Driver;
+    const driver = (override ?? dueDriver) as Driver;
     const actual = entry?.actual_driver ?? null;
-    const covered = Boolean(actual && actual !== driver && isDriver(actual));
+    const covered = Boolean(actual && actual !== dueDriver && isDriver(actual));
 
     if (covered && isDriver(actual)) {
       credits[actual] += 1;
@@ -76,15 +81,24 @@ export function computeRotation(
     days.push({
       day,
       cancelled: false,
+      dueDriver,
       driver,
       actualDriver: actual,
-      swapped: Boolean(override && override !== rotationPick),
+      swapped: Boolean(override && override !== dueDriver),
       covered,
-      note: entry?.note ?? null,
     });
   }
 
-  return { days, credits };
+  const values = DRIVERS.map((driver) => credits[driver]);
+  const floor = Math.min(...values);
+  const balance = {
+    "Víctor": credits["Víctor"] - floor,
+    Mau: credits.Mau - floor,
+    Gabo: credits.Gabo - floor,
+  };
+  const even = balance["Víctor"] === 0 && balance.Mau === 0 && balance.Gabo === 0;
+
+  return { days, credits, balance, even };
 }
 
 export function formatDay(day: string): string {

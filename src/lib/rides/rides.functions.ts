@@ -58,10 +58,8 @@ async function readState(): Promise<RideState> {
 }
 
 /**
- * Both the schedule change and its history entry are written by one database
- * function, inside a single transaction. Only the fields being changed are
- * sent: the function reads and merges the rest under its own lock, so two
- * simultaneous edits can never overwrite each other's fields.
+ * Schedule change + history entry in one DB transaction.
+ * Only patched fields are sent; the function merges the rest under its lock.
  */
 type RidePatch = { day: string } & Partial<Omit<RideAdjustment, "day">>;
 
@@ -79,24 +77,22 @@ export const getRideState = createServerFn({ method: "GET" }).handler(
   async (): Promise<RideState> => readState(),
 );
 
-export const swapDaysFn = createServerFn({ method: "POST" })
+export const setOverrideDriverFn = createServerFn({ method: "POST" })
   .inputValidator((data) =>
-    z
-      .object({
-        dayA: daySchema,
-        driverA: driverSchema,
-        dayB: daySchema,
-        driverB: driverSchema,
-      })
-      .parse(data),
+    z.object({ day: daySchema, driver: driverSchema }).parse(data),
   )
   .handler(async ({ data }) => {
     await applyChange(
-      "swap",
-      `${data.driverA} (${formatDay(data.dayA)}) y ${data.driverB} (${formatDay(data.dayB)}) se cambiaron el ride`,
+      "override",
+      `${data.driver} da el ride el ${formatDay(data.day)}`,
       [
-        { day: data.dayA, override_driver: data.driverB },
-        { day: data.dayB, override_driver: data.driverA },
+        {
+          day: data.day,
+          override_driver: data.driver,
+          actual_driver: data.driver,
+          cancelled: false,
+          note: null,
+        },
       ],
     );
     return null;
@@ -110,9 +106,17 @@ export const setCancelledFn = createServerFn({ method: "POST" })
     await applyChange(
       "cancel",
       data.cancelled
-        ? `Sin partido el ${formatDay(data.day)}`
-        : `Se reactivó el partido del ${formatDay(data.day)}`,
-      [{ day: data.day, cancelled: data.cancelled }],
+        ? `Sin ride el ${formatDay(data.day)}`
+        : `Se reactivó el ride del ${formatDay(data.day)}`,
+      [
+        {
+          day: data.day,
+          cancelled: data.cancelled,
+          ...(data.cancelled
+            ? { override_driver: null, actual_driver: null, note: null }
+            : {}),
+        },
+      ],
     );
     return null;
   });
@@ -127,7 +131,7 @@ export const setActualDriverFn = createServerFn({ method: "POST" })
       data.driver
         ? `${data.driver} dio el ride el ${formatDay(data.day)}`
         : `Se borró quién dio el ride el ${formatDay(data.day)}`,
-      [{ day: data.day, actual_driver: data.driver }],
+      [{ day: data.day, actual_driver: data.driver, note: null }],
     );
     return null;
   });
@@ -136,12 +140,11 @@ export const clearOverrideFn = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ day: daySchema }).parse(data))
   .handler(async ({ data }) => {
     await applyChange("reset", `Se regresó al ride normal del ${formatDay(data.day)}`, [
-      { day: data.day, override_driver: null },
+      { day: data.day, override_driver: null, note: null },
     ]);
     return null;
   });
 
-/** Restores the last change and consumes its history entry in one transaction. */
 export const undoLastFn = createServerFn({ method: "POST" }).handler(
   async (): Promise<string | null> => {
     const db = await admin();

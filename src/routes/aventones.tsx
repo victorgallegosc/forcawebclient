@@ -5,12 +5,13 @@ import { useMemo, useState } from "react";
 
 import { PageShell, Panel, SectionLabel } from "@/components/app-shell";
 import { LeagueRetryError } from "@/components/league-error";
+import { isUs } from "@/components/league-bits";
 import { rideStateQuery, scheduleQuery } from "@/lib/queries";
 import {
   clearOverride,
   setActualDriver,
   setCancelled,
-  swapDays,
+  setOverrideDriver,
   undoLast,
 } from "@/lib/rides/rides-data";
 import {
@@ -21,7 +22,6 @@ import {
   type Driver,
 } from "@/lib/rides/rotation";
 import { cn } from "@/lib/utils";
-import { isUs } from "@/components/league-bits";
 
 export const Route = createFileRoute("/aventones")({
   head: () => ({
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/aventones")({
       {
         name: "description",
         content:
-          "Quién da el ride cada sábado: rotación entre Víctor, Mau y Gabo, con cambios, partidos cancelados y rides cubiertos.",
+          "Quién da el ride cada sábado: rotación entre Víctor, Mau y Gabo, con cambios y días sin ride.",
       },
       { property: "og:title", content: "Ride · Cancha" },
       { property: "og:description", content: "A quién le toca el ride este sábado." },
@@ -51,7 +51,6 @@ export const Route = createFileRoute("/aventones")({
   ),
 });
 
-/** "hace 5 min", "ayer" — friendlier than a raw timestamp in the change log. */
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const min = Math.round(diff / 60000);
@@ -70,7 +69,7 @@ function AventonesPage() {
   const adjustments = rideState.adjustments;
   const log = rideState.log;
   const [message, setMessage] = useState<string | null>(null);
-  const [swapWith, setSwapWith] = useState<string | null>(null);
+  const [changeDay, setChangeDay] = useState<string | null>(null);
 
   const fixtureDays = useMemo(() => {
     const days = new Set<string>();
@@ -98,13 +97,11 @@ function AventonesPage() {
     mutationFn: async (task: () => Promise<string | null | void>) => task(),
     onSuccess: async (result) => {
       setMessage(typeof result === "string" ? result : "Listo, rides actualizados.");
-      setSwapWith(null);
+      setChangeDay(null);
       await queryClient.invalidateQueries({ queryKey: ["ride-state"] });
     },
     onError: (error: Error) => setMessage(error.message),
   });
-
-  const swapTargets = upcoming.filter((day) => !day.cancelled && day.driver);
 
   return (
     <PageShell
@@ -112,54 +109,58 @@ function AventonesPage() {
       title="Ride"
       description="Rotación entre Víctor, Mau y Gabo los sábados que juega el equipo."
     >
-      <div className="grid gap-6 md:grid-cols-[1.25fr_1fr] animate-rise">
+      <div className="grid animate-rise gap-8 md:grid-cols-[1.25fr_1fr]">
         <Panel interactive>
           <SectionLabel>Próximo sábado</SectionLabel>
           {next ? (
             <>
-              <p className="display-title mt-3 text-5xl md:text-6xl">{next.driver}</p>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className="display-title mt-4 text-5xl md:text-6xl">{next.driver}</p>
+              <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
                 Da el ride el {formatDay(next.day)}
                 {next.swapped ? " · cambio acordado" : ""}
               </p>
-              <div className="mt-6 flex flex-wrap gap-2">
+              <div className="mt-7 flex flex-wrap gap-2.5">
                 <button
                   type="button"
                   onClick={() =>
                     run.mutate(() => setActualDriver(next.day, next.driver as string))
                   }
-                  className="inline-flex items-center gap-2 rounded-md bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-opacity hover:opacity-90"
+                  className="inline-flex items-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-90"
                 >
                   <Car className="size-4" /> Confirmar que dio el ride
                 </button>
                 <button
                   type="button"
                   onClick={() => run.mutate(() => setCancelled(next.day, true))}
-                  className="inline-flex items-center gap-2 rounded-md bg-secondary px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-secondary/80"
+                  className="inline-flex items-center gap-2 rounded-xl bg-secondary px-4 py-3 text-sm font-semibold transition-colors hover:bg-secondary/80"
                 >
-                  <XCircle className="size-4" /> No hay partido
+                  <XCircle className="size-4" /> Sin ride
                 </button>
               </div>
             </>
           ) : (
-            <p className="mt-4 text-muted-foreground">No hay sábados pendientes en el calendario.</p>
+            <p className="mt-5 text-muted-foreground">No hay sábados pendientes en el calendario.</p>
           )}
         </Panel>
 
-        <div>
-          <SectionLabel>Rides a favor</SectionLabel>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Si cubres el ride de alguien, queda registrado como ajuste y suma a favor.
+        <div className="rounded-2xl bg-secondary/35 p-5 md:p-6">
+          <SectionLabel>Saldo a favor</SectionLabel>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            {rotation.even
+              ? "Todos están a mano."
+              : "Quién quedó a favor después de cubrir rides."}
           </p>
-          <div className="mt-4 space-y-1">
+          <div className="mt-5 space-y-2">
             {DRIVERS.map((driver) => (
               <div
                 key={driver}
-                className="flex items-center justify-between rounded-lg bg-secondary/45 px-4 py-3"
+                className="flex items-center justify-between rounded-xl bg-background/70 px-4 py-3.5"
               >
                 <span className="font-semibold">{driver}</span>
                 <span className="text-sm tabular-nums text-muted-foreground">
-                  {rotation.credits[driver as Driver]} a favor
+                  {rotation.even || rotation.balance[driver as Driver] === 0
+                    ? "A mano"
+                    : `${rotation.balance[driver as Driver]} a favor`}
                 </span>
               </div>
             ))}
@@ -170,22 +171,22 @@ function AventonesPage() {
       {message ? (
         <p
           role="status"
-          className="mt-5 rounded-lg bg-accent/20 px-4 py-3 text-sm font-medium text-accent-foreground animate-fade-in"
+          className="mt-6 animate-fade-in rounded-xl bg-accent/20 px-4 py-3.5 text-sm font-medium text-accent-foreground"
         >
           {message}
         </p>
       ) : null}
 
-      <section className="mt-12 border-t border-border/60 pt-10">
+      <section className="mt-14 border-t border-border/50 pt-12">
         <SectionLabel>Agenda</SectionLabel>
-        <h2 className="mt-2 text-2xl">Próximos sábados</h2>
-        <div className="mt-5 space-y-2">
+        <h2 className="mt-3 text-2xl">Próximos sábados</h2>
+        <div className="mt-6 space-y-2.5">
           {upcoming.map((day) => (
             <div
               key={day.day}
               className={cn(
-                "rounded-lg px-4 py-3.5",
-                swapWith === day.day ? "surface-panel" : "bg-secondary/45",
+                "rounded-2xl px-4 py-4",
+                changeDay === day.day ? "surface-panel" : "bg-secondary/40",
               )}
             >
               <div className="flex flex-wrap items-center gap-3">
@@ -193,10 +194,10 @@ function AventonesPage() {
                 <span
                   className={cn(
                     "font-semibold",
-                    day.cancelled ? "text-muted-foreground line-through" : "text-foreground",
+                    day.cancelled ? "text-muted-foreground" : "text-foreground",
                   )}
                 >
-                  {day.cancelled ? "Sin partido" : day.driver}
+                  {day.cancelled ? "Sin ride" : day.driver}
                 </span>
                 {day.swapped ? (
                   <span className="rounded-md bg-accent/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">
@@ -207,8 +208,8 @@ function AventonesPage() {
                   {!day.cancelled ? (
                     <button
                       type="button"
-                      onClick={() => setSwapWith(swapWith === day.day ? null : day.day)}
-                      className="rounded-md bg-background/90 px-3 py-1.5 text-xs font-medium shadow-[inset_0_0_0_1px_var(--color-border)]"
+                      onClick={() => setChangeDay(changeDay === day.day ? null : day.day)}
+                      className="rounded-lg bg-background/90 px-3 py-2 text-xs font-medium shadow-[inset_0_0_0_1px_var(--color-border)]"
                     >
                       Cambiar
                     </button>
@@ -216,15 +217,15 @@ function AventonesPage() {
                   <button
                     type="button"
                     onClick={() => run.mutate(() => setCancelled(day.day, !day.cancelled))}
-                    className="rounded-md bg-background/90 px-3 py-1.5 text-xs font-medium shadow-[inset_0_0_0_1px_var(--color-border)]"
+                    className="rounded-lg bg-background/90 px-3 py-2 text-xs font-medium shadow-[inset_0_0_0_1px_var(--color-border)]"
                   >
-                    {day.cancelled ? "Sí hay partido" : "Sin partido"}
+                    {day.cancelled ? "Sí hay ride" : "Sin ride"}
                   </button>
                   {day.swapped ? (
                     <button
                       type="button"
                       onClick={() => run.mutate(() => clearOverride(day.day))}
-                      className="rounded-md bg-background/90 px-3 py-1.5 text-xs font-medium shadow-[inset_0_0_0_1px_var(--color-border)]"
+                      className="rounded-lg bg-background/90 px-3 py-2 text-xs font-medium shadow-[inset_0_0_0_1px_var(--color-border)]"
                     >
                       <RotateCcw className="mr-1 inline size-3" />
                       Normal
@@ -233,33 +234,31 @@ function AventonesPage() {
                 </div>
               </div>
 
-              {swapWith === day.day ? (
-                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+              {changeDay === day.day ? (
+                <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-border/50 pt-3.5">
                   <span className="text-xs uppercase tracking-wider text-muted-foreground">
-                    Cambiar con
+                    Quién da el ride
                   </span>
-                  {swapTargets
-                    .filter((target) => target.day !== day.day)
-                    .slice(0, 6)
-                    .map((target) => (
-                      <button
-                        type="button"
-                        key={target.day}
-                        onClick={() =>
-                          run.mutate(() =>
-                            swapDays(
-                              day.day,
-                              day.driver as string,
-                              target.day,
-                              target.driver as string,
-                            ),
-                          )
-                        }
-                        className="rounded-md bg-primary/12 px-3 py-1.5 text-xs font-semibold text-primary"
-                      >
-                        {target.driver} · {formatDay(target.day)}
-                      </button>
-                    ))}
+                  {DRIVERS.map((driver) => (
+                    <button
+                      type="button"
+                      key={driver}
+                      onClick={() =>
+                        run.mutate(async () => {
+                          await setOverrideDriver(day.day, driver);
+                          return `${driver} da el ride el ${formatDay(day.day)}.`;
+                        })
+                      }
+                      className={cn(
+                        "rounded-lg px-3 py-2 text-xs font-semibold transition-colors",
+                        day.driver === driver
+                          ? "bg-foreground text-background"
+                          : "bg-primary/12 text-primary hover:bg-primary/18",
+                      )}
+                    >
+                      {driver}
+                    </button>
+                  ))}
                 </div>
               ) : null}
             </div>
@@ -270,15 +269,12 @@ function AventonesPage() {
         </div>
       </section>
 
-      <section className="mt-12 border-t border-border/60 pt-10">
+      <section className="mt-14 border-t border-border/50 pt-12">
         <SectionLabel>Pasado</SectionLabel>
-        <h2 className="mt-2 text-2xl">Historial</h2>
-        <div className="mt-5 space-y-2">
+        <h2 className="mt-3 text-2xl">Historial</h2>
+        <div className="mt-6 space-y-2.5">
           {past.map((day) => (
-            <div
-              key={day.day}
-              className="rounded-lg bg-secondary/45 px-4 py-3.5"
-            >
+            <div key={day.day} className="rounded-2xl bg-secondary/40 px-4 py-4">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="text-sm text-muted-foreground">{formatDay(day.day)}</span>
                 <span className="font-semibold">
@@ -293,7 +289,7 @@ function AventonesPage() {
                 ) : null}
                 {day.covered ? (
                   <span className="text-xs text-muted-foreground">
-                    (le tocaba a {day.driver})
+                    (le tocaba a {day.dueDriver})
                   </span>
                 ) : null}
                 {!day.cancelled && !day.actualDriver ? (
@@ -303,7 +299,7 @@ function AventonesPage() {
                         type="button"
                         key={driver}
                         onClick={() => run.mutate(() => setActualDriver(day.day, driver))}
-                        className="rounded-md bg-background/90 px-3 py-1.5 text-xs font-medium shadow-[inset_0_0_0_1px_var(--color-border)]"
+                        className="rounded-lg bg-background/90 px-3 py-2 text-xs font-medium shadow-[inset_0_0_0_1px_var(--color-border)]"
                       >
                         dio el ride {driver}
                       </button>
@@ -311,9 +307,6 @@ function AventonesPage() {
                   </div>
                 ) : null}
               </div>
-              {day.note ? (
-                <p className="mt-2 text-xs text-muted-foreground">{day.note}</p>
-              ) : null}
             </div>
           ))}
           {past.length === 0 ? (
@@ -322,14 +315,12 @@ function AventonesPage() {
         </div>
       </section>
 
-      <section className="mt-12 border-t border-border/60 pt-10">
+      <section className="mt-14 border-t border-border/50 pt-12">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <SectionLabel>Actividad</SectionLabel>
-            <h2 className="mt-2 text-2xl">Últimos cambios</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Lo más reciente aparece arriba.
-            </p>
+            <h2 className="mt-3 text-2xl">Últimos cambios</h2>
+            <p className="mt-1.5 text-xs text-muted-foreground">Lo más reciente aparece arriba.</p>
           </div>
           <button
             type="button"
@@ -338,19 +329,19 @@ function AventonesPage() {
                 undoLast().then((s) => (s ? `Se deshizo: ${s}` : "No hay nada qué deshacer.")),
               )
             }
-            className="inline-flex items-center gap-2 rounded-md bg-secondary px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-secondary/80"
+            className="inline-flex items-center gap-2 rounded-xl bg-secondary px-4 py-3 text-sm font-semibold transition-colors hover:bg-secondary/80"
           >
             <Undo2 className="size-4" /> Deshacer el último
           </button>
         </div>
 
-        <div className="mt-5 space-y-2">
+        <div className="mt-6 space-y-2.5">
           {log.map((entry) => (
             <div
               key={entry.id}
               className={cn(
-                "flex flex-wrap items-center gap-3 rounded-lg px-4 py-3.5",
-                entry.undone ? "bg-secondary/25" : "bg-secondary/45",
+                "flex flex-wrap items-center gap-3 rounded-2xl px-4 py-4",
+                entry.undone ? "bg-secondary/25" : "bg-secondary/40",
               )}
             >
               <span
