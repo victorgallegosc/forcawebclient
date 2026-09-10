@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { Car, RotateCcw, Sparkles, Undo2, XCircle } from "lucide-react";
+import { Link, createFileRoute } from "@tanstack/react-router";
+import { ArrowRight, RotateCcw, Sparkles, Undo2, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { PageShell, Panel, SectionLabel } from "@/components/app-shell";
@@ -130,31 +130,20 @@ function AventonesPage() {
         <Panel interactive>
           <SectionLabel>Próximo sábado</SectionLabel>
           {next ? (
-            <>
-              <p className="display-title mt-4 text-5xl md:text-6xl">{next.driver}</p>
+            <Link
+              to="/ride/$day"
+              params={{ day: next.day }}
+              className="mt-4 block transition-opacity hover:opacity-90"
+            >
+              <p className="display-title text-5xl md:text-6xl">{next.driver}</p>
               <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
                 Da el ride el {formatDay(next.day)}
                 {next.swapped ? " · cambio acordado" : ""}
               </p>
-              <div className="mt-7 flex flex-wrap gap-2.5">
-                <button
-                  type="button"
-                  onClick={() =>
-                    run.mutate(() => setActualDriver(next.day, next.driver as string))
-                  }
-                  className="inline-flex items-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-90"
-                >
-                  <Car className="size-4" /> Confirmar que dio el ride
-                </button>
-                <button
-                  type="button"
-                  onClick={() => run.mutate(() => setCancelled(next.day, true))}
-                  className="inline-flex items-center gap-2 rounded-xl bg-secondary px-4 py-3 text-sm font-semibold transition-colors hover:bg-secondary/80"
-                >
-                  <XCircle className="size-4" /> Sin ride
-                </button>
-              </div>
-            </>
+              <p className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                Ver ride <ArrowRight className="size-4" />
+              </p>
+            </Link>
           ) : (
             <p className="mt-5 text-muted-foreground">No hay sábados pendientes en el calendario.</p>
           )}
@@ -222,15 +211,21 @@ function AventonesPage() {
               )}
             >
               <div className="flex flex-wrap items-center gap-3">
-                <span className="text-sm text-muted-foreground">{formatDay(day.day)}</span>
-                <span
-                  className={cn(
-                    "font-semibold",
-                    day.cancelled ? "text-muted-foreground" : "text-foreground",
-                  )}
-                >
-                  {day.cancelled ? "Sin ride" : day.driver}
-                </span>
+                {day.cancelled ? (
+                  <>
+                    <span className="text-sm text-muted-foreground">{formatDay(day.day)}</span>
+                    <span className="font-semibold text-muted-foreground">Sin ride</span>
+                  </>
+                ) : (
+                  <Link
+                    to="/ride/$day"
+                    params={{ day: day.day }}
+                    className="flex min-w-0 flex-wrap items-center gap-3 transition-opacity hover:opacity-80"
+                  >
+                    <span className="text-sm text-muted-foreground">{formatDay(day.day)}</span>
+                    <span className="font-semibold text-foreground">{day.driver}</span>
+                  </Link>
+                )}
                 {day.swapped ? (
                   <span className="rounded-md bg-accent/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">
                     cambio

@@ -1,15 +1,17 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, ExternalLink, Navigation } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useMemo } from "react";
 import { z } from "zod";
 
+import { OpenMapsButton } from "@/components/open-maps-button";
 import { DataNote, PageShell, Panel, SectionLabel } from "@/components/app-shell";
 import { LeagueRetryError } from "@/components/league-error";
 import { TeamName, isUs } from "@/components/league-bits";
 import { resultLabel, shortTeamName } from "@/lib/league-helpers";
-import { driverRouteQuery, rideStateQuery, scheduleQuery } from "@/lib/queries";
+import { rideStateQuery, scheduleQuery } from "@/lib/queries";
 import {
+  DRIVERS,
   computeRotation,
   formatDay,
   type Driver,
@@ -28,7 +30,7 @@ export const Route = createFileRoute("/partido/$iso")({
       { title: `Partido ${params.iso} · Cancha` },
       {
         name: "description",
-        content: "Detalle del partido, resultado y trayecto del ride.",
+        content: "Detalle del partido, resultado y ride.",
       },
     ],
   }),
@@ -204,88 +206,25 @@ function PartidoPage() {
                       ? "Le toca el ride"
                       : "Aún no hay rol para este día"}
                 </p>
+                {driver && DRIVERS.includes(driver as Driver) ? (
+                  <div className="mt-6 flex flex-wrap gap-2.5">
+                    <OpenMapsButton driver={driver as Driver} />
+                    <Link
+                      to="/ride/$day"
+                      params={{ day: iso }}
+                      className="inline-flex items-center rounded-xl bg-secondary px-4 py-3 text-sm font-semibold transition-colors hover:bg-secondary/80"
+                    >
+                      Ver ride
+                    </Link>
+                  </div>
+                ) : null}
               </>
             )}
           </Panel>
         ) : null}
       </div>
 
-      {ours && driver && !rideDay?.cancelled ? <DriverRouteSection driver={driver} /> : null}
-
       <DataNote fetchedAt={schedule.fetchedAt} stale={schedule.stale} />
     </PageShell>
-  );
-}
-
-function DriverRouteSection({ driver }: { driver: Driver }) {
-  const { data: routePlan } = useSuspenseQuery(driverRouteQuery(driver));
-
-  return (
-    <section className="mt-12 animate-fade-in border-t border-border/50 pt-12">
-      <SectionLabel>Trayecto</SectionLabel>
-      <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="text-2xl">Ruta de {driver}</h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Resumen del recorrido hasta las canchas.
-          </p>
-        </div>
-        <a
-          href={routePlan.mapsUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-90"
-        >
-          Abrir en Google Maps <ExternalLink className="size-4" />
-        </a>
-      </div>
-
-      <div className="mt-8 grid gap-5 md:grid-cols-[1fr_1.2fr]">
-        <Panel>
-          <div className="flex items-baseline justify-between gap-3">
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                Tiempo estimado
-              </p>
-              <p className="display-title mt-2 text-4xl">{routePlan.totalDurationText}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                Distancia
-              </p>
-              <p className="mt-2 text-lg font-semibold">{routePlan.totalDistanceText}</p>
-            </div>
-          </div>
-          {routePlan.source === "google" ? (
-            <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
-              Estimado con tráfico al momento de consultar.
-            </p>
-          ) : null}
-        </Panel>
-
-        <div className="space-y-2.5">
-          {routePlan.stops.map((stop, index) => (
-            <div
-              key={stop.id}
-              className="flex items-start gap-3 rounded-xl bg-secondary/45 px-4 py-3.5"
-            >
-              <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-background text-xs font-bold shadow-[inset_0_0_0_1px_var(--color-border)]">
-                {index + 1}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold">{stop.label}</p>
-                {routePlan.legs[index] ? (
-                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Navigation className="size-3" />
-                    {routePlan.legs[index]!.durationText} · {routePlan.legs[index]!.distanceText}{" "}
-                    → {routePlan.legs[index]!.to.label}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }
