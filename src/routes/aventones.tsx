@@ -1,14 +1,12 @@
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Car, RotateCcw, Undo2, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { PageShell, Panel } from "@/components/app-shell";
-import { scheduleQuery } from "@/lib/queries";
+import { rideStateQuery, scheduleQuery } from "@/lib/queries";
 import {
   clearOverride,
-  loadAdjustments,
-  loadLog,
   setActualDriver,
   setCancelled,
   swapDays,
@@ -37,7 +35,12 @@ export const Route = createFileRoute("/aventones")({
       { property: "og:description", content: "A quién le toca manejar este sábado." },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(scheduleQuery),
+  loader: async ({ context }) => {
+    await Promise.all([
+      context.queryClient.ensureQueryData(scheduleQuery),
+      context.queryClient.ensureQueryData(rideStateQuery),
+    ]);
+  },
   component: AventonesPage,
   errorComponent: () => (
     <PageShell title="Aventones" description="No pudimos cargar los turnos ahora mismo.">
@@ -46,11 +49,24 @@ export const Route = createFileRoute("/aventones")({
   ),
 });
 
+/** "hace 5 min", "ayer" — friendlier than a raw timestamp in the change log. */
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.round(diff / 60000);
+  if (min < 1) return "hace un momento";
+  if (min < 60) return `hace ${min} min`;
+  const hours = Math.round(min / 60);
+  if (hours < 24) return `hace ${hours} h`;
+  const days = Math.round(hours / 24);
+  return days === 1 ? "ayer" : `hace ${days} días`;
+}
+
 function AventonesPage() {
   const queryClient = useQueryClient();
   const schedule = useSuspenseQuery(scheduleQuery).data;
-  const adjustments = useQuery({ queryKey: ["ride-days"], queryFn: loadAdjustments });
-  const log = useQuery({ queryKey: ["ride-log"], queryFn: loadLog });
+  const rideState = useSuspenseQuery(rideStateQuery).data;
+  const adjustments = rideState.adjustments;
+  const log = rideState.log;
   const [message, setMessage] = useState<string | null>(null);
   const [swapWith, setSwapWith] = useState<string | null>(null);
 
@@ -67,8 +83,8 @@ function AventonesPage() {
   }, [schedule]);
 
   const rotation = useMemo(
-    () => computeRotation(fixtureDays, adjustments.data ?? []),
-    [fixtureDays, adjustments.data],
+    () => computeRotation(fixtureDays, adjustments),
+    [fixtureDays, adjustments],
   );
 
   const today = todayInMonterrey();
@@ -81,10 +97,7 @@ function AventonesPage() {
     onSuccess: async (result) => {
       setMessage(typeof result === "string" ? result : "Listo, turnos actualizados.");
       setSwapWith(null);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["ride-days"] }),
-        queryClient.invalidateQueries({ queryKey: ["ride-log"] }),
-      ]);
+      await queryClient.invalidateQueries({ queryKey: ["ride-state"] });
     },
     onError: (error: Error) => setMessage(error.message),
   });
@@ -149,12 +162,6 @@ function AventonesPage() {
               </div>
             ))}
           </div>
-          <button
-            onClick={() => run.mutate(() => undoLast().then((s) => (s ? `Se deshizo: ${s}` : "No hay nada que deshacer.")))}
-            className="mt-4 inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-semibold"
-          >
-            <Undo2 className="size-4" /> Deshacer último cambio
-          </button>
         </Panel>
       </div>
 
@@ -283,11 +290,64 @@ function AventonesPage() {
         </div>
       </Panel>
 
-      {log.data && log.data.length > 0 ? (
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          Último cambio: {log.data[0]!.summary}
-        </p>
-      ) : null}
+      <Panel className="mt-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-2xl">Últimos cambios</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Todo lo que se ha movido en los turnos, lo más reciente arriba.
+            </p>
+          </div>
+          <button
+            onClick={() =>
+              run.mutate(() =>
+                undoLast().then((s) => (s ? `Se deshizo: ${s}` : "No hay nada que deshacer.")),
+              )
+            }
+            className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-semibold"
+          >
+            <Undo2 className="size-4" /> Deshacer el último
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-2">
+          {log.map((entry) => (
+            <div
+              key={entry.id}
+              className={cn(
+                "flex flex-wrap items-center gap-3 rounded-xl px-4 py-3",
+                entry.undone ? "bg-secondary/20" : "bg-secondary/40",
+              )}
+            >
+              <span
+                className={cn(
+                  "size-2 shrink-0 rounded-full",
+                  entry.undone ? "bg-muted-foreground/50" : "bg-primary",
+                )}
+              />
+              <span
+                className={cn(
+                  "text-sm font-medium",
+                  entry.undone ? "text-muted-foreground line-through" : "text-foreground",
+                )}
+              >
+                {entry.summary}
+              </span>
+              {entry.undone ? (
+                <span className="rounded-full bg-background/70 px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  deshecho
+                </span>
+              ) : null}
+              <span className="ml-auto text-xs text-muted-foreground">
+                {timeAgo(entry.created_at)}
+              </span>
+            </div>
+          ))}
+          {log.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Todavía no hay cambios registrados.</p>
+          ) : null}
+        </div>
+      </Panel>
     </PageShell>
   );
 }

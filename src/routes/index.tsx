@@ -1,14 +1,12 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { useMemo } from "react";
 
 import { DataNote, PageShell, Panel } from "@/components/app-shell";
 import { MatchMeta, MatchRow, StandingsTable, isUs } from "@/components/league-bits";
-import { scheduleQuery, standingsQuery } from "@/lib/queries";
+import { rideStateQuery, scheduleQuery, standingsQuery } from "@/lib/queries";
 import { computeRotation, formatDay, todayInMonterrey } from "@/lib/rides/rotation";
-import { useQuery } from "@tanstack/react-query";
-import { loadAdjustments } from "@/lib/rides/rides-data";
 import {
   CATEGORY_NAME,
   OUR_GROUP_NAME,
@@ -33,6 +31,8 @@ export const Route = createFileRoute("/")({
     ],
   }),
   loader: async ({ context }) => {
+    // The ride panel is auxiliary: prefetch it, but never let it break the page.
+    void context.queryClient.ensureQueryData(rideStateQuery).catch(() => null);
     await Promise.all([
       context.queryClient.ensureQueryData(scheduleQuery),
       context.queryClient.ensureQueryData(standingsQuery),
@@ -49,7 +49,8 @@ export const Route = createFileRoute("/")({
 function Index() {
   const schedule = useSuspenseQuery(scheduleQuery).data;
   const standings = useSuspenseQuery(standingsQuery).data;
-  const adjustments = useQuery({ queryKey: ["ride-days"], queryFn: loadAdjustments });
+  const rideState = useQuery(rideStateQuery);
+  const adjustments = rideState.data?.adjustments ?? [];
   const today = todayInMonterrey();
 
   const ourMatches = useMemo(() => {
@@ -67,9 +68,9 @@ function Index() {
     () =>
       computeRotation(
         ourMatches.map((match) => match.iso).filter((iso): iso is string => Boolean(iso)),
-        adjustments.data ?? [],
+        adjustments,
       ),
-    [ourMatches, adjustments.data],
+    [ourMatches, adjustments],
   );
   const nextDriver = rotation.days.find((day) => day.day >= today && !day.cancelled);
 
