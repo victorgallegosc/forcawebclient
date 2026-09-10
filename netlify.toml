@@ -1,0 +1,12 @@
+[build]
+  command = "nzf run build"
+  publish = "dist"
+
+[context.production]
+  publish = "dist"
+
+[context.deploy-preview]
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
