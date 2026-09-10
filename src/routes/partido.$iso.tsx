@@ -137,43 +137,36 @@ function PartidoPage() {
       <div className="grid animate-rise gap-8 lg:grid-cols-[1.2fr_1fr]">
         <Panel>
           <SectionLabel>Marcador</SectionLabel>
-          {/* Stacked layout: full team names stay readable; no duplicate “Sunderland” label. */}
-          <div className="mt-6 flex flex-col items-stretch gap-3">
-            <div className="rounded-xl bg-secondary/40 px-4 py-3 text-center">
-              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                Local
-              </p>
+          <div className="mt-4 flex items-center gap-2.5 sm:gap-3">
+            <div className="min-w-0 flex-1 text-right">
               <TeamName
                 team={match.home}
-                className="mt-1 text-base leading-snug sm:text-lg"
+                className="text-[13px] leading-tight sm:text-sm"
               />
             </div>
-            <div className="mx-auto w-full max-w-[10rem] rounded-xl bg-background px-3 py-2.5 text-center shadow-[inset_0_0_0_1px_var(--color-border)]">
-              <p className="display-title text-2xl tabular-nums sm:text-3xl">
+            <div className="shrink-0 rounded-lg bg-background px-2.5 py-1.5 text-center shadow-[inset_0_0_0_1px_var(--color-border)] sm:px-3 sm:py-2">
+              <p className="display-title text-xl tabular-nums leading-none sm:text-2xl">
                 {played ? `${match.homeGoals} – ${match.awayGoals}` : "vs"}
               </p>
               {!played ? (
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <p className="mt-1 text-[10px] text-muted-foreground">
                   {match.time || "Por definir"}
                 </p>
               ) : null}
             </div>
-            <div className="rounded-xl bg-secondary/40 px-4 py-3 text-center">
-              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                Visitante
-              </p>
+            <div className="min-w-0 flex-1">
               <TeamName
                 team={match.away}
-                className="mt-1 text-base leading-snug sm:text-lg"
+                className="text-[13px] leading-tight sm:text-sm"
               />
             </div>
           </div>
 
           {outcome ? (
-            <p className="mt-6 text-sm font-semibold text-muted-foreground">{outcome}</p>
+            <p className="mt-3 text-sm font-medium text-muted-foreground">{outcome}</p>
           ) : null}
 
-          <dl className="mt-10 grid gap-3 sm:grid-cols-2">
+          <dl className="mt-6 grid gap-2 sm:grid-cols-2">
             {[
               ["Jornada", match.round],
               ["Hora", match.time || "—"],
@@ -182,11 +175,11 @@ function PartidoPage() {
               ["Estado", match.status || "—"],
               ["Fecha", match.date || formatDay(iso)],
             ].map(([label, value]) => (
-              <div key={String(label)} className="rounded-xl bg-secondary/45 px-4 py-3.5">
-                <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              <div key={String(label)} className="rounded-lg bg-secondary/45 px-3 py-2.5">
+                <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   {label}
                 </dt>
-                <dd className="mt-1.5 font-semibold leading-snug">{value}</dd>
+                <dd className="mt-0.5 text-sm font-semibold leading-snug">{value}</dd>
               </div>
             ))}
           </dl>
