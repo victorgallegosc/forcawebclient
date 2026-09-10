@@ -33,8 +33,69 @@ export function shortTeamName(team: string) {
   return rest.join(" ") || team;
 }
 
+export function sameTeam(a: string, b: string) {
+  return a.trim() === b.trim();
+}
+
+/** All matches for a team across groups, oldest → newest. */
+export function teamMatches(matches: Match[], team: string) {
+  return matches
+    .filter((match) => sameTeam(match.home, team) || sameTeam(match.away, team))
+    .sort((a, b) => (a.iso ?? "").localeCompare(b.iso ?? ""));
+}
+
+export function teamPlayedMatches(matches: Match[], team: string) {
+  return teamMatches(matches, team)
+    .filter((match) => match.homeGoals !== null && match.awayGoals !== null)
+    .sort((a, b) => (b.iso ?? "").localeCompare(a.iso ?? ""));
+}
+
+export function teamFormFromMatches(
+  matches: Match[],
+  team: string,
+  limit = 5,
+): FormResult[] {
+  return teamPlayedMatches(matches, team)
+    .slice(0, limit)
+    .map((match) => teamResultCode(match, team)!);
+}
+
+export function teamResultCode(match: Match, team: string): FormResult | null {
+  if (match.homeGoals === null || match.awayGoals === null) return null;
+  const home = sameTeam(match.home, team);
+  const goalsFor = home ? match.homeGoals : match.awayGoals;
+  const goalsAgainst = home ? match.awayGoals : match.homeGoals;
+  if (goalsFor > goalsAgainst) return "V";
+  if (goalsFor < goalsAgainst) return "D";
+  return "E";
+}
+
+export function teamResultLabel(match: Match, team: string) {
+  const code = teamResultCode(match, team);
+  if (code === "V") return "Victoria";
+  if (code === "D") return "Derrota";
+  if (code === "E") return "Empate";
+  return null;
+}
+
+export function teamOpponent(match: Match, team: string) {
+  return sameTeam(match.home, team) ? match.away : match.home;
+}
+
 export function findStanding(rows: StandingRow[], team: string) {
-  return rows.find((row) => row.team.trim() === team.trim()) ?? null;
+  return rows.find((row) => sameTeam(row.team, team)) ?? null;
+}
+
+/** Resolve a route/team param against known full team names. */
+export function resolveTeamName(param: string, knownTeams: string[]) {
+  const decoded = decodeURIComponent(param).trim();
+  const exact = knownTeams.find((team) => sameTeam(team, decoded));
+  if (exact) return exact;
+  const byShort = knownTeams.find(
+    (team) => shortTeamName(team).toLowerCase() === decoded.toLowerCase(),
+  );
+  if (byShort) return byShort;
+  return decoded;
 }
 
 /** Human countdown to a Saturday evening kickoff in Monterrey. */

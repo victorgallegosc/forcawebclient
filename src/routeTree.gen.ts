@@ -14,6 +14,7 @@ import { Route as AventonesRouteImport } from './routes/aventones'
 import { Route as CalendarioRouteImport } from './routes/calendario'
 import { Route as GoleoRouteImport } from './routes/goleo'
 import { Route as TablaRouteImport } from './routes/tabla'
+import { Route as EquipoNameRouteImport } from './routes/equipo.$name'
 import { Route as PartidoIsoRouteImport } from './routes/partido.$iso'
 
 const IndexRoute = IndexRouteImport.update({
@@ -41,6 +42,11 @@ const TablaRoute = TablaRouteImport.update({
   path: '/tabla',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EquipoNameRoute = EquipoNameRouteImport.update({
+  id: '/equipo/$name',
+  path: '/equipo/$name',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PartidoIsoRoute = PartidoIsoRouteImport.update({
   id: '/partido/$iso',
   path: '/partido/$iso',
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/calendario': typeof CalendarioRoute
   '/goleo': typeof GoleoRoute
   '/tabla': typeof TablaRoute
+  '/equipo/$name': typeof EquipoNameRoute
   '/partido/$iso': typeof PartidoIsoRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/calendario': typeof CalendarioRoute
   '/goleo': typeof GoleoRoute
   '/tabla': typeof TablaRoute
+  '/equipo/$name': typeof EquipoNameRoute
   '/partido/$iso': typeof PartidoIsoRoute
 }
 export interface FileRoutesById {
@@ -70,14 +78,28 @@ export interface FileRoutesById {
   '/calendario': typeof CalendarioRoute
   '/goleo': typeof GoleoRoute
   '/tabla': typeof TablaRoute
+  '/equipo/$name': typeof EquipoNameRoute
   '/partido/$iso': typeof PartidoIsoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/aventones' | '/calendario' | '/goleo' | '/tabla' | '/partido/$iso'
+    | '/'
+    | '/aventones'
+    | '/calendario'
+    | '/goleo'
+    | '/tabla'
+    | '/equipo/$name'
+    | '/partido/$iso'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/aventones' | '/calendario' | '/goleo' | '/tabla' | '/partido/$iso'
+  to:
+    | '/'
+    | '/aventones'
+    | '/calendario'
+    | '/goleo'
+    | '/tabla'
+    | '/equipo/$name'
+    | '/partido/$iso'
   id:
     | '__root__'
     | '/'
@@ -85,6 +107,7 @@ export interface FileRouteTypes {
     | '/calendario'
     | '/goleo'
     | '/tabla'
+    | '/equipo/$name'
     | '/partido/$iso'
   fileRoutesById: FileRoutesById
 }
@@ -94,6 +117,7 @@ export interface RootRouteChildren {
   CalendarioRoute: typeof CalendarioRoute
   GoleoRoute: typeof GoleoRoute
   TablaRoute: typeof TablaRoute
+  EquipoNameRoute: typeof EquipoNameRoute
   PartidoIsoRoute: typeof PartidoIsoRoute
 }
 
@@ -134,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TablaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/equipo/$name': {
+      id: '/equipo/$name'
+      path: '/equipo/$name'
+      fullPath: '/equipo/$name'
+      preLoaderRoute: typeof EquipoNameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/partido/$iso': {
       id: '/partido/$iso'
       path: '/partido/$iso'
@@ -150,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarioRoute: CalendarioRoute,
   GoleoRoute: GoleoRoute,
   TablaRoute: TablaRoute,
+  EquipoNameRoute: EquipoNameRoute,
   PartidoIsoRoute: PartidoIsoRoute,
 }
 export const routeTree = rootRouteImport
