@@ -1,4 +1,4 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { useMemo } from "react";
@@ -31,10 +31,11 @@ export const Route = createFileRoute("/")({
     ],
   }),
   loader: async ({ context }) => {
+    // The ride panel is auxiliary: prefetch it, but never let it break the page.
+    void context.queryClient.ensureQueryData(rideStateQuery).catch(() => null);
     await Promise.all([
       context.queryClient.ensureQueryData(scheduleQuery),
       context.queryClient.ensureQueryData(standingsQuery),
-      context.queryClient.ensureQueryData(rideStateQuery),
     ]);
   },
   component: Index,
@@ -48,7 +49,8 @@ export const Route = createFileRoute("/")({
 function Index() {
   const schedule = useSuspenseQuery(scheduleQuery).data;
   const standings = useSuspenseQuery(standingsQuery).data;
-  const adjustments = useSuspenseQuery(rideStateQuery).data.adjustments;
+  const rideState = useQuery(rideStateQuery);
+  const adjustments = rideState.data?.adjustments ?? [];
   const today = todayInMonterrey();
 
   const ourMatches = useMemo(() => {

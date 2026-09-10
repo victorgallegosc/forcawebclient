@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { DRIVERS, type RideAdjustment } from "./rotation";
+import { DRIVERS, formatDay, type RideAdjustment } from "./rotation";
 
 export type RideLogEntry = {
   id: string;
@@ -48,10 +48,13 @@ async function readState(): Promise<RideState> {
 
 /**
  * Both the schedule change and its history entry are written by one database
- * function, inside a single transaction, so an update can never land without
- * its undo entry and concurrent edits cannot snapshot stale state.
+ * function, inside a single transaction. Only the fields being changed are
+ * sent: the function reads and merges the rest under its own lock, so two
+ * simultaneous edits can never overwrite each other's fields.
  */
-async function applyChange(action: string, summary: string, rows: RideAdjustment[]) {
+type RidePatch = { day: string } & Partial<Omit<RideAdjustment, "day">>;
+
+async function applyChange(action: string, summary: string, rows: RidePatch[]) {
   const db = await admin();
   const { error } = await db.rpc("apply_ride_change", {
     _action: action,
@@ -59,26 +62,6 @@ async function applyChange(action: string, summary: string, rows: RideAdjustment
     _rows: rows as unknown as never,
   });
   if (error) throw new Error(error.message);
-}
-
-async function currentRows(days: string[]): Promise<RideAdjustment[]> {
-  const db = await admin();
-  const { data, error } = await db
-    .from("ride_days")
-    .select("day, cancelled, override_driver, actual_driver, note")
-    .in("day", days);
-  if (error) throw new Error(error.message);
-  const byDay = new Map((data ?? []).map((row) => [row.day, row as RideAdjustment]));
-  return days.map(
-    (day) =>
-      byDay.get(day) ?? {
-        day,
-        cancelled: false,
-        override_driver: null,
-        actual_driver: null,
-        note: null,
-      },
-  );
 }
 
 export const getRideState = createServerFn({ method: "GET" }).handler(
@@ -97,13 +80,12 @@ export const swapDaysFn = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data }) => {
-    const [a, b] = await currentRows([data.dayA, data.dayB]);
     await applyChange(
       "swap",
-      `${data.driverA} y ${data.driverB} se cambiaron de sábado`,
+      `${data.driverA} (${formatDay(data.dayA)}) y ${data.driverB} (${formatDay(data.dayB)}) se cambiaron de sábado`,
       [
-        { ...a!, override_driver: data.driverB },
-        { ...b!, override_driver: data.driverA },
+        { day: data.dayA, override_driver: data.driverB },
+        { day: data.dayB, override_driver: data.driverA },
       ],
     );
     return null;
@@ -114,13 +96,12 @@ export const setCancelledFn = createServerFn({ method: "POST" })
     z.object({ day: daySchema, cancelled: z.boolean() }).parse(data),
   )
   .handler(async ({ data }) => {
-    const [row] = await currentRows([data.day]);
     await applyChange(
       "cancel",
       data.cancelled
-        ? `Sin partido el ${data.day}`
-        : `Se restauró el partido del ${data.day}`,
-      [{ ...row!, cancelled: data.cancelled }],
+        ? `Sin partido el ${formatDay(data.day)}`
+        : `Se restauró el partido del ${formatDay(data.day)}`,
+      [{ day: data.day, cancelled: data.cancelled }],
     );
     return null;
   });
@@ -130,13 +111,12 @@ export const setActualDriverFn = createServerFn({ method: "POST" })
     z.object({ day: daySchema, driver: driverSchema.nullable() }).parse(data),
   )
   .handler(async ({ data }) => {
-    const [row] = await currentRows([data.day]);
     await applyChange(
       "drove",
       data.driver
-        ? `${data.driver} manejó el ${data.day}`
-        : `Se borró quién manejó el ${data.day}`,
-      [{ ...row!, actual_driver: data.driver }],
+        ? `${data.driver} manejó el ${formatDay(data.day)}`
+        : `Se borró quién manejó el ${formatDay(data.day)}`,
+      [{ day: data.day, actual_driver: data.driver }],
     );
     return null;
   });
@@ -144,9 +124,8 @@ export const setActualDriverFn = createServerFn({ method: "POST" })
 export const clearOverrideFn = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ day: daySchema }).parse(data))
   .handler(async ({ data }) => {
-    const [row] = await currentRows([data.day]);
-    await applyChange("reset", `Se restauró el turno normal del ${data.day}`, [
-      { ...row!, override_driver: null },
+    await applyChange("reset", `Se restauró el turno normal del ${formatDay(data.day)}`, [
+      { day: data.day, override_driver: null },
     ]);
     return null;
   });

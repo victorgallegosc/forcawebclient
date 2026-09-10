@@ -29,7 +29,7 @@ async function readDurable<T>(key: string): Promise<Entry<T> | null> {
 
 async function writeDurable(key: string, data: unknown, fetchedAt: number) {
   try {
-    await (await db())
+    const { error } = await (await db())
       .from("league_cache")
       .upsert(
         {
@@ -39,6 +39,8 @@ async function writeDurable(key: string, data: unknown, fetchedAt: number) {
         },
         { onConflict: "key" },
       );
+    // Supabase reports database errors in the result, not as a rejection.
+    if (error) throw new Error(error.message);
   } catch (error) {
     console.error(`Could not persist league cache for ${key}`, error);
   }
