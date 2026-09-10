@@ -3,7 +3,17 @@ import { join } from "node:path";
 
 const outputDir = "dist";
 const compatibilityDir = join(outputDir, "client");
-const publicEntries = ["assets", "favicon.ico", "robots.txt", "_headers"];
+const publicEntries = [
+  "assets",
+  "favicon.ico",
+  "favicon.svg",
+  "apple-touch-icon.png",
+  "icons",
+  "site.webmanifest",
+  "sw.js",
+  "robots.txt",
+  "_headers",
+];
 
 async function exists(path) {
   try {
