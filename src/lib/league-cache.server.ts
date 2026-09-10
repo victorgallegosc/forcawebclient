@@ -1,12 +1,16 @@
 // Two-layer cache so opening the app doesn't hammer the league site:
 // a short in-process cache, backed by a durable last-good copy in the
-// database so a cold start or a new instance still has a fallback when the
-// league site is unreachable.
+// database when Supabase is configured. Without Cloud credentials the
+// durable layer is skipped and the live scrape still works.
 
 type Entry<T> = { data: T; fetchedAt: number };
 
 const memory = new Map<string, Entry<unknown>>();
 const TTL_MS = 10 * 60 * 1000;
+
+function durableEnabled() {
+  return Boolean(process.env["SUPABASE_URL"] && process.env["SUPABASE_SERVICE_ROLE_KEY"]);
+}
 
 async function db() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -14,6 +18,7 @@ async function db() {
 }
 
 async function readDurable<T>(key: string): Promise<Entry<T> | null> {
+  if (!durableEnabled()) return null;
   try {
     const { data, error } = await (await db())
       .from("league_cache")
@@ -28,6 +33,7 @@ async function readDurable<T>(key: string): Promise<Entry<T> | null> {
 }
 
 async function writeDurable(key: string, data: unknown, fetchedAt: number) {
+  if (!durableEnabled()) return;
   try {
     const { error } = await (await db())
       .from("league_cache")

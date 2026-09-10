@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { DataNote, Panel, PageShell } from "@/components/app-shell";
+import { DataNote, Panel, PageShell, SectionLabel } from "@/components/app-shell";
 import { StandingsTable } from "@/components/league-bits";
 import { standingsQuery } from "@/lib/queries";
 import { CATEGORY_NAME, TOURNAMENT_NAME } from "@/lib/zione/constants";
@@ -9,13 +9,13 @@ import { CATEGORY_NAME, TOURNAMENT_NAME } from "@/lib/zione/constants";
 export const Route = createFileRoute("/tabla")({
   head: () => ({
     meta: [
-      { title: "Tabla de posiciones · Sunderland A3860" },
+      { title: "Tabla · Cancha" },
       {
         name: "description",
         content:
           "Posiciones de los Grupos 4 A y 4 B de la F7 Sabatino Vespertino en el 3er Torneo Fin de Semana 2026.",
       },
-      { property: "og:title", content: "Tabla de posiciones · Sunderland A3860" },
+      { property: "og:title", content: "Tabla · Cancha" },
       {
         property: "og:description",
         content: "Posiciones actualizadas de los Grupos 4 A y 4 B.",
@@ -37,15 +37,16 @@ function TablaPage() {
   return (
     <PageShell
       eyebrow={CATEGORY_NAME}
-      title="Tabla de posiciones"
+      title="Tabla"
       description={`${TOURNAMENT_NAME} · Grupos 4 A y 4 B`}
     >
-      <div className="space-y-6">
+      <div className="space-y-12 animate-rise">
         {data.data.map((group) => (
-          <Panel key={group.groupId}>
-            <h2 className="mb-4 text-2xl">{group.groupName}</h2>
+          <section key={group.groupId}>
+            <SectionLabel>Grupo</SectionLabel>
+            <h2 className="mt-2 mb-5 text-2xl">{group.groupName}</h2>
             <StandingsTable rows={group.rows} />
-          </Panel>
+          </section>
         ))}
       </div>
       <DataNote fetchedAt={data.fetchedAt} stale={data.stale} />
