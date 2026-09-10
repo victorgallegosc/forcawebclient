@@ -195,13 +195,11 @@ function PartidoPage() {
             ) : (
               <>
                 <p className="display-title mt-4 text-4xl md:text-5xl">
-                  {driver ?? "Por definir"}
+                  {rideDay?.actualDriver ?? driver ?? "Por definir"}
                 </p>
                 <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
                   {rideDay?.actualDriver
-                    ? rideDay.covered
-                      ? `Dio el ride (le tocaba a ${rideDay.dueDriver})`
-                      : "Dio el ride"
+                    ? "Dio el ride"
                     : rideDay?.driver
                       ? "Le toca el ride"
                       : "Aún no hay rol para este día"}
