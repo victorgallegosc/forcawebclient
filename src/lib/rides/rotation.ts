@@ -1,4 +1,4 @@
-export const DRIVERS = ["Víctor", "Mau", "Gabo"] as const;
+export const DRIVERS = ["Gabo", "Mau", "Víctor"] as const;
 export type Driver = (typeof DRIVERS)[number];
 
 /** First ride day of the tournament (2026-07-04) belonged to Gabo. */
@@ -28,10 +28,13 @@ export type RideDay = {
 
 export type RotationResult = {
   days: RideDay[];
-  /** Raw cover counts. */
-  credits: Record<Driver, number>;
-  /** Credits minus the minimum — when everyone is even, all are 0 (a mano). */
+  /**
+   * Signed favor balance: +1 when you cover someone, −1 when someone covers you.
+   * Mutual covers between the same pair cancel out. All zeros ⇒ a mano.
+   */
   balance: Record<Driver, number>;
+  /** Alias of balance (kept for existing callers). */
+  credits: Record<Driver, number>;
   even: boolean;
 };
 
@@ -40,17 +43,18 @@ function isDriver(value: string | null | undefined): value is Driver {
 }
 
 /**
- * Round-robin Víctor → Mau → Gabo, starting at ROTATION_START.
+ * Round-robin Gabo → Mau → Víctor, starting at ROTATION_START.
  * Cancelled / sin-ride days skip the turn.
- * Covering someone else's ride grants a favor credit. Balances are relative:
- * if everyone has the same raw credit, they are a mano (balance 0).
+ *
+ * If A drives when it was B’s turn: A +1 a favor, B −1 (en contra).
+ * Later if B covers A, those entries cancel and both return toward a mano.
  */
 export function computeRotation(
   fixtureDays: string[],
   adjustments: RideAdjustment[],
 ): RotationResult {
   const byDay = new Map(adjustments.map((entry) => [entry.day, entry]));
-  const credits: Record<Driver, number> = { "Víctor": 0, Mau: 0, Gabo: 0 };
+  const balance: Record<Driver, number> = { Gabo: 0, Mau: 0, "Víctor": 0 };
   const days: RideDay[] = [];
   let cursor = DRIVERS.indexOf(ROTATION_START);
 
@@ -79,7 +83,8 @@ export function computeRotation(
     const covered = Boolean(actual && actual !== dueDriver && isDriver(actual));
 
     if (covered && isDriver(actual)) {
-      credits[actual] += 1;
+      balance[actual] += 1;
+      balance[dueDriver] -= 1;
     }
 
     days.push({
@@ -93,16 +98,15 @@ export function computeRotation(
     });
   }
 
-  const values = DRIVERS.map((driver) => credits[driver]);
-  const floor = Math.min(...values);
-  const balance = {
-    "Víctor": credits["Víctor"] - floor,
-    Mau: credits.Mau - floor,
-    Gabo: credits.Gabo - floor,
-  };
-  const even = balance["Víctor"] === 0 && balance.Mau === 0 && balance.Gabo === 0;
+  const even = balance.Gabo === 0 && balance.Mau === 0 && balance["Víctor"] === 0;
 
-  return { days, credits, balance, even };
+  return { days, balance, credits: { ...balance }, even };
+}
+
+export function formatBalance(value: number): string {
+  if (value === 0) return "A mano";
+  if (value > 0) return `${value} a favor`;
+  return `${Math.abs(value)} en contra`;
 }
 
 export function formatDay(day: string): string {

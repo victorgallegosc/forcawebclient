@@ -1,8 +1,8 @@
 import type { RideAdjustment } from "./rotation";
 
 /**
- * Ride history for the 3er Torneo 2026 (Víctor / Mau / Gabo only).
- * Rotation starts with Gabo on 2026-07-04, then Víctor → Mau → Gabo.
+ * Ride history for the 3er Torneo 2026 (Gabo / Mau / Víctor only).
+ * Rotation: Gabo → Mau → Víctor, starting 2026-07-04 with Gabo.
  * Cancelled / sin-ride days skip the turn. No motive notes.
  */
 export const TOURNAMENT_RIDE_SEED: RideAdjustment[] = [

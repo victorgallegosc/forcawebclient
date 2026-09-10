@@ -17,6 +17,7 @@ import {
 import {
   DRIVERS,
   computeRotation,
+  formatBalance,
   formatDay,
   todayInMonterrey,
   type Driver,
@@ -148,7 +149,7 @@ function AventonesPage() {
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
             {rotation.even
               ? "Todos están a mano."
-              : "Quién quedó a favor después de cubrir rides."}
+              : "Si cubres a alguien quedas a favor; si te cubren, en contra."}
           </p>
           <div className="mt-5 space-y-2">
             {DRIVERS.map((driver) => (
@@ -158,9 +159,7 @@ function AventonesPage() {
               >
                 <span className="font-semibold">{driver}</span>
                 <span className="text-sm tabular-nums text-muted-foreground">
-                  {rotation.even || rotation.balance[driver as Driver] === 0
-                    ? "A mano"
-                    : `${rotation.balance[driver as Driver]} a favor`}
+                  {formatBalance(rotation.balance[driver as Driver])}
                 </span>
               </div>
             ))}
