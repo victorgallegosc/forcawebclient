@@ -5,7 +5,7 @@ import { useMemo } from "react";
 
 import { DataNote, PageShell, Panel, SectionLabel } from "@/components/app-shell";
 import { LeagueRetryError } from "@/components/league-error";
-import { MatchMeta, MatchRow, StandingsTable, isUs } from "@/components/league-bits";
+import { MatchMeta, MatchRow, StandingsTable, TeamName, isUs } from "@/components/league-bits";
 import {
   countdownLabel,
   findStanding,
@@ -174,7 +174,9 @@ function Index() {
                     <dt className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                       Rival
                     </dt>
-                    <dd className="mt-1 font-semibold">{shortTeamName(rivalRow.team)}</dd>
+                    <dd className="mt-1 font-semibold">
+                      <TeamName team={rivalRow.team} />
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
