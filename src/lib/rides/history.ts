@@ -1,11 +1,12 @@
 import type { RideAdjustment } from "./rotation";
 
 /**
- * Ride history for the 3er Torneo 2026 (Víctor / Mau / Gabo only).
- * Rotation: Víctor → Mau → Gabo. Cancelled / sin-ride days skip the turn.
+ * Ride history for the 3er Torneo 2026 (Gabo / Mau / Víctor only).
+ * Rotation: Gabo → Mau → Víctor, starting 2026-07-04 with Gabo.
+ * Cancelled / sin-ride days skip the turn. No motive notes.
  */
 export const TOURNAMENT_RIDE_SEED: RideAdjustment[] = [
-  { day: "2026-07-04", cancelled: false, override_driver: null, actual_driver: "Mau", note: null },
+  { day: "2026-07-04", cancelled: false, override_driver: null, actual_driver: "Gabo", note: null },
   { day: "2026-07-11", cancelled: false, override_driver: null, actual_driver: "Mau", note: null },
   { day: "2026-07-18", cancelled: false, override_driver: null, actual_driver: "Gabo", note: null },
   { day: "2026-07-25", cancelled: false, override_driver: null, actual_driver: "Víctor", note: null },
@@ -16,7 +17,7 @@ export const TOURNAMENT_RIDE_SEED: RideAdjustment[] = [
   { day: "2026-08-29", cancelled: false, override_driver: null, actual_driver: "Mau", note: null },
 ];
 
-/** Seed owns known tournament days; DB can still set overrides for “Cambiar”. */
+/** Seed owns known tournament history; DB can still set overrides for “Cambiar”. */
 export function mergeRideAdjustments(
   seed: RideAdjustment[],
   stored: RideAdjustment[],
@@ -33,9 +34,11 @@ export function mergeRideAdjustments(
       const base = byDay.get(entry.day)!;
       byDay.set(entry.day, {
         ...base,
+        // Seed owns who actually drove on known history days.
+        actual_driver: base.actual_driver ?? entry.actual_driver,
+        // Seed cancelled (e.g. Aug 22) sticks; otherwise DB “Sin ride” applies.
+        cancelled: base.cancelled || entry.cancelled,
         override_driver: entry.override_driver ?? base.override_driver,
-        cancelled: entry.cancelled,
-        actual_driver: entry.actual_driver ?? base.actual_driver,
         note: null,
       });
       continue;

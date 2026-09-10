@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Car, RotateCcw, Undo2, XCircle } from "lucide-react";
+import { Car, RotateCcw, Sparkles, Undo2, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { PageShell, Panel, SectionLabel } from "@/components/app-shell";
@@ -9,6 +9,7 @@ import { isUs } from "@/components/league-bits";
 import { rideStateQuery, scheduleQuery } from "@/lib/queries";
 import {
   clearOverride,
+  explainRideBalances,
   setActualDriver,
   setCancelled,
   setOverrideDriver,
@@ -17,6 +18,7 @@ import {
 import {
   DRIVERS,
   computeRotation,
+  formatBalance,
   formatDay,
   todayInMonterrey,
   type Driver,
@@ -30,7 +32,7 @@ export const Route = createFileRoute("/aventones")({
       {
         name: "description",
         content:
-          "Quién da el ride cada sábado: rotación entre Víctor, Mau y Gabo, con cambios y días sin ride.",
+          "Quién da el ride cada sábado: rotación Gabo → Mau → Víctor, con cambios y días sin ride.",
       },
       { property: "og:title", content: "Ride · Cancha" },
       { property: "og:description", content: "A quién le toca el ride este sábado." },
@@ -70,6 +72,10 @@ function AventonesPage() {
   const log = rideState.log;
   const [message, setMessage] = useState<string | null>(null);
   const [changeDay, setChangeDay] = useState<string | null>(null);
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [explanationSource, setExplanationSource] = useState<"ai" | "local" | null>(
+    null,
+  );
 
   const fixtureDays = useMemo(() => {
     const days = new Set<string>();
@@ -98,7 +104,18 @@ function AventonesPage() {
     onSuccess: async (result) => {
       setMessage(typeof result === "string" ? result : "Listo, rides actualizados.");
       setChangeDay(null);
+      setExplanation(null);
+      setExplanationSource(null);
       await queryClient.invalidateQueries({ queryKey: ["ride-state"] });
+    },
+    onError: (error: Error) => setMessage(error.message),
+  });
+
+  const explain = useMutation({
+    mutationFn: () => explainRideBalances(fixtureDays),
+    onSuccess: (result) => {
+      setExplanation(result.text);
+      setExplanationSource(result.source);
     },
     onError: (error: Error) => setMessage(error.message),
   });
@@ -107,7 +124,7 @@ function AventonesPage() {
     <PageShell
       eyebrow="Rol de rides"
       title="Ride"
-      description="Rotación entre Víctor, Mau y Gabo los sábados que juega el equipo."
+      description="Rotación Gabo → Mau → Víctor los sábados que juega el equipo."
     >
       <div className="grid animate-rise gap-8 md:grid-cols-[1.25fr_1fr]">
         <Panel interactive>
@@ -148,7 +165,7 @@ function AventonesPage() {
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
             {rotation.even
               ? "Todos están a mano."
-              : "Quién quedó a favor después de cubrir rides."}
+              : "Si cubres a alguien quedas a favor; si te cubren, en contra."}
           </p>
           <div className="mt-5 space-y-2">
             {DRIVERS.map((driver) => (
@@ -158,13 +175,28 @@ function AventonesPage() {
               >
                 <span className="font-semibold">{driver}</span>
                 <span className="text-sm tabular-nums text-muted-foreground">
-                  {rotation.even || rotation.balance[driver as Driver] === 0
-                    ? "A mano"
-                    : `${rotation.balance[driver as Driver]} a favor`}
+                  {formatBalance(rotation.balance[driver as Driver])}
                 </span>
               </div>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={() => explain.mutate()}
+            disabled={explain.isPending || fixtureDays.length === 0}
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-background/80 px-3.5 py-2.5 text-sm font-medium shadow-[inset_0_0_0_1px_var(--color-border)] transition-opacity disabled:opacity-60"
+          >
+            <Sparkles className="size-4" />
+            {explain.isPending ? "Explicando…" : "Explicar saldos"}
+          </button>
+          {explanation ? (
+            <div className="mt-4 rounded-xl bg-background/70 px-4 py-3.5 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-foreground/70">
+                {explanationSource === "ai" ? "Explicación IA" : "Explicación"}
+              </p>
+              {explanation}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -282,16 +314,6 @@ function AventonesPage() {
                     ? "Sin ride"
                     : `Dio el ride: ${day.actualDriver ?? day.driver}`}
                 </span>
-                {day.covered ? (
-                  <span className="rounded-md bg-accent/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">
-                    ajuste
-                  </span>
-                ) : null}
-                {day.covered ? (
-                  <span className="text-xs text-muted-foreground">
-                    (le tocaba a {day.dueDriver})
-                  </span>
-                ) : null}
                 {!day.cancelled && !day.actualDriver ? (
                   <div className="ml-auto flex flex-wrap gap-2">
                     {DRIVERS.map((driver) => (

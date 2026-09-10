@@ -1,6 +1,7 @@
 // Thin client wrappers: every mutation runs on the server in one transaction.
 import {
   clearOverrideFn,
+  explainRideBalancesFn,
   setActualDriverFn,
   setCancelledFn,
   setOverrideDriverFn,
@@ -9,6 +10,7 @@ import {
 import type { Driver } from "./rotation";
 
 export type { RideLogEntry, RideState } from "./rides.functions";
+export type { RideExplainResult } from "./explain";
 
 export async function setOverrideDriver(day: string, driver: string) {
   await setOverrideDriverFn({ data: { day, driver: driver as Driver } });
@@ -28,4 +30,8 @@ export async function clearOverride(day: string) {
 
 export async function undoLast(): Promise<string | null> {
   return undoLastFn();
+}
+
+export async function explainRideBalances(fixtureDays: string[]) {
+  return explainRideBalancesFn({ data: { fixtureDays } });
 }
