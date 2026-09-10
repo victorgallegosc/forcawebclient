@@ -60,6 +60,7 @@ function CalendarioPage() {
           <button
             key={entry.id}
             onClick={() => setGroupId(entry.id)}
+            aria-pressed={entry.id === groupId}
             className={cn(
               "rounded-full px-4 py-2 text-sm font-medium transition-colors",
               entry.id === groupId
@@ -72,6 +73,7 @@ function CalendarioPage() {
         ))}
         <button
           onClick={() => setOnlyUs((value) => !value)}
+          aria-pressed={onlyUs}
           className={cn(
             "ml-auto rounded-full px-4 py-2 text-sm font-medium transition-colors",
             onlyUs

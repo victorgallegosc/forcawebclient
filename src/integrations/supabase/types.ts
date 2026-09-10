@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      league_cache: {
+        Row: {
+          fetched_at: string
+          key: string
+          payload: Json
+        }
+        Insert: {
+          fetched_at?: string
+          key: string
+          payload: Json
+        }
+        Update: {
+          fetched_at?: string
+          key?: string
+          payload?: Json
+        }
+        Relationships: []
+      }
       ride_days: {
         Row: {
           actual_driver: string | null
@@ -79,7 +97,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      apply_ride_change: {
+        Args: { _action: string; _rows: Json; _summary: string }
+        Returns: undefined
+      }
+      undo_last_ride_change: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never

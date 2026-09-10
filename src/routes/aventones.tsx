@@ -1,14 +1,12 @@
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Car, RotateCcw, Undo2, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { PageShell, Panel } from "@/components/app-shell";
-import { scheduleQuery } from "@/lib/queries";
+import { rideStateQuery, scheduleQuery } from "@/lib/queries";
 import {
   clearOverride,
-  loadAdjustments,
-  loadLog,
   setActualDriver,
   setCancelled,
   swapDays,
@@ -37,7 +35,12 @@ export const Route = createFileRoute("/aventones")({
       { property: "og:description", content: "A quién le toca manejar este sábado." },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(scheduleQuery),
+  loader: async ({ context }) => {
+    await Promise.all([
+      context.queryClient.ensureQueryData(scheduleQuery),
+      context.queryClient.ensureQueryData(rideStateQuery),
+    ]);
+  },
   component: AventonesPage,
   errorComponent: () => (
     <PageShell title="Aventones" description="No pudimos cargar los turnos ahora mismo.">
@@ -49,8 +52,9 @@ export const Route = createFileRoute("/aventones")({
 function AventonesPage() {
   const queryClient = useQueryClient();
   const schedule = useSuspenseQuery(scheduleQuery).data;
-  const adjustments = useQuery({ queryKey: ["ride-days"], queryFn: loadAdjustments });
-  const log = useQuery({ queryKey: ["ride-log"], queryFn: loadLog });
+  const rideState = useSuspenseQuery(rideStateQuery).data;
+  const adjustments = rideState.adjustments;
+  const log = rideState.log;
   const [message, setMessage] = useState<string | null>(null);
   const [swapWith, setSwapWith] = useState<string | null>(null);
 
@@ -67,8 +71,8 @@ function AventonesPage() {
   }, [schedule]);
 
   const rotation = useMemo(
-    () => computeRotation(fixtureDays, adjustments.data ?? []),
-    [fixtureDays, adjustments.data],
+    () => computeRotation(fixtureDays, adjustments),
+    [fixtureDays, adjustments],
   );
 
   const today = todayInMonterrey();
@@ -81,10 +85,7 @@ function AventonesPage() {
     onSuccess: async (result) => {
       setMessage(typeof result === "string" ? result : "Listo, turnos actualizados.");
       setSwapWith(null);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["ride-days"] }),
-        queryClient.invalidateQueries({ queryKey: ["ride-log"] }),
-      ]);
+      await queryClient.invalidateQueries({ queryKey: ["ride-state"] });
     },
     onError: (error: Error) => setMessage(error.message),
   });
@@ -283,9 +284,9 @@ function AventonesPage() {
         </div>
       </Panel>
 
-      {log.data && log.data.length > 0 ? (
+      {log.length > 0 ? (
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Último cambio: {log.data[0]!.summary}
+          Último cambio: {log[0]!.summary}
         </p>
       ) : null}
     </PageShell>

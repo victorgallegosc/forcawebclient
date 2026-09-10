@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { getCards, getSchedule, getScorers, getStandings } from "./league.functions";
+import { getRideState } from "./rides/rides.functions";
 
 export const standingsQuery = queryOptions({
   queryKey: ["standings"],
@@ -24,4 +25,11 @@ export const cardsQuery = queryOptions({
   queryKey: ["cards"],
   queryFn: () => getCards(),
   staleTime: 5 * 60 * 1000,
+});
+
+/** Loaded on the server too, so the first render already knows the rotation. */
+export const rideStateQuery = queryOptions({
+  queryKey: ["ride-state"],
+  queryFn: () => getRideState(),
+  staleTime: 30 * 1000,
 });
