@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { DataNote, FilterChip, PageShell, Panel, SectionLabel } from "@/components/app-shell";
+import { LeagueRetryError } from "@/components/league-error";
 import { cardsQuery, scorersQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { OUR_TEAM } from "@/lib/zione/constants";
@@ -22,16 +23,17 @@ export const Route = createFileRoute("/goleo")({
     ],
   }),
   loader: async ({ context }) => {
-    await Promise.all([
+    await Promise.allSettled([
       context.queryClient.ensureQueryData(scorersQuery),
       context.queryClient.ensureQueryData(cardsQuery),
     ]);
   },
   component: GoleoPage,
   errorComponent: () => (
-    <PageShell title="Goleo" description="No pudimos leer las estadísticas ahora mismo.">
-      <Panel>Intenta de nuevo en unos minutos.</Panel>
-    </PageShell>
+    <LeagueRetryError
+      title="Goleo"
+      description="No pudimos cargar las estadísticas por ahora."
+    />
   ),
 });
 
@@ -63,7 +65,7 @@ function StatList({ group, valueLabel }: { group: GroupPlayerStats; valueLabel: 
           </div>
         ))}
         {group.rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Sin registros todavía.</p>
+          <p className="text-sm text-muted-foreground">Aún no hay registros.</p>
         ) : null}
       </div>
     </section>
@@ -82,7 +84,7 @@ function GoleoPage() {
     <PageShell
       eyebrow="Estadísticas"
       title="Goleo y tarjetas"
-      description="Individuales de los Grupos 4 A y 4 B."
+      description="Goleadores y tarjetas de los Grupos 4 A y 4 B."
     >
       <div className="mb-8 flex gap-2 animate-fade-in">
         {(["goleo", "tarjetas"] as const).map((option) => (

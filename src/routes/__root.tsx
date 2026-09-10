@@ -20,7 +20,7 @@ function NotFoundComponent() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">404</p>
         <h1 className="display-title mt-3 text-4xl text-foreground">Página no encontrada</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Esta ruta no existe o se movió. Vuelve al inicio para seguir.
+          Esta página no existe o se movió. Regresa al inicio para continuar.
         </p>
         <div className="mt-8">
           <Link
@@ -45,9 +45,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center field-glow px-4">
       <div className="max-w-md text-center animate-rise">
-        <h1 className="display-title text-3xl text-foreground">No se pudo cargar</h1>
+        <h1 className="display-title text-3xl text-foreground">Algo salió mal</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Algo falló de nuestro lado. Puedes reintentar o volver al inicio.
+          Hubo un problema de nuestro lado. Puedes intentar de nuevo o regresar al inicio.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-2">
           <button
@@ -80,7 +80,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Tabla, calendario, goleo y turnos de aventón del F7 Sabatino Vespertino — 3er Torneo Fin de Semana 2026.",
+          "Tabla, calendario, goleo y rides del F7 Sabatino Vespertino — 3er Torneo Fin de Semana 2026.",
       },
       { name: "author", content: "Cancha" },
       { property: "og:type", content: "website" },

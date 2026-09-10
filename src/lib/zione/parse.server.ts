@@ -33,19 +33,37 @@ function buildUrl(path: string, params: Record<string, string>) {
   return url.toString();
 }
 
-async function loadPage(url: string): Promise<CheerioAPI> {
-  const response = await fetch(url, {
-    headers: {
-      "user-agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36",
-      accept: "text/html,application/xhtml+xml",
-      "accept-language": "es-MX,es;q=0.9",
-    },
-    // Bound the request so a hung upstream still falls back to cached data.
-    signal: AbortSignal.timeout(12_000),
-  });
-  if (!response.ok) throw new Error(`Zione responded ${response.status} for ${url}`);
-  return cheerio.load(await response.text());
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Zione has no public API — we always scrape the official console HTML
+ * (main4.asp?dts=DTS094 and subpages) for live data. Retries with a
+ * browser-like fingerprint cover brief Netlify cold-start timeouts.
+ */
+async function loadPage(url: string, attempt = 1): Promise<CheerioAPI> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "accept-language": "es-MX,es;q=0.9,en;q=0.8",
+        referer: `${ZIONE_BASE}/main4.asp?dts=${DTS}`,
+        "cache-control": "no-cache",
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) throw new Error(`Zione responded ${response.status} for ${url}`);
+    const html = await response.text();
+    if (html.length < 800) throw new Error(`Zione returned an empty page for ${url}`);
+    return cheerio.load(html);
+  } catch (error) {
+    if (attempt >= 3) throw error;
+    await sleep(300 * attempt);
+    return loadPage(url, attempt + 1);
+  }
 }
 
 const MONTHS: Record<string, number> = {
