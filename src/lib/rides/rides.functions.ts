@@ -20,9 +20,11 @@ export type RideState = {
 const daySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida");
 const driverSchema = z.enum(DRIVERS);
 
+// Reads use the read-only tables; every write goes through the database
+// functions, which are the only thing allowed to change a turn.
 async function admin() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return supabaseAdmin;
+  const { publicDb } = await import("@/lib/supabase-public");
+  return publicDb();
 }
 
 async function readState(): Promise<RideState> {

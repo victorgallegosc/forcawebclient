@@ -101,7 +101,18 @@ export type Database = {
         Args: { _action: string; _rows: Json; _summary: string }
         Returns: undefined
       }
+      read_league_cache: {
+        Args: { _key: string }
+        Returns: {
+          fetched_at: string
+          payload: Json
+        }[]
+      }
       undo_last_ride_change: { Args: never; Returns: string }
+      write_league_cache: {
+        Args: { _fetched_at: string; _key: string; _payload: Json }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

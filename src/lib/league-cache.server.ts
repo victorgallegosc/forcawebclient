@@ -9,19 +9,16 @@ const memory = new Map<string, Entry<unknown>>();
 const TTL_MS = 10 * 60 * 1000;
 
 async function db() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return supabaseAdmin;
+  const { publicDb } = await import("@/lib/supabase-public");
+  return publicDb();
 }
 
 async function readDurable<T>(key: string): Promise<Entry<T> | null> {
   try {
-    const { data, error } = await (await db())
-      .from("league_cache")
-      .select("payload, fetched_at")
-      .eq("key", key)
-      .maybeSingle();
-    if (error || !data) return null;
-    return { data: data.payload as T, fetchedAt: new Date(data.fetched_at).getTime() };
+    const { data, error } = await (await db()).rpc("read_league_cache", { _key: key });
+    const row = data?.[0];
+    if (error || !row) return null;
+    return { data: row.payload as T, fetchedAt: new Date(row.fetched_at).getTime() };
   } catch {
     return null;
   }
@@ -29,16 +26,11 @@ async function readDurable<T>(key: string): Promise<Entry<T> | null> {
 
 async function writeDurable(key: string, data: unknown, fetchedAt: number) {
   try {
-    const { error } = await (await db())
-      .from("league_cache")
-      .upsert(
-        {
-          key,
-          payload: data as unknown as never,
-          fetched_at: new Date(fetchedAt).toISOString(),
-        },
-        { onConflict: "key" },
-      );
+    const { error } = await (await db()).rpc("write_league_cache", {
+      _key: key,
+      _payload: data as unknown as never,
+      _fetched_at: new Date(fetchedAt).toISOString(),
+    });
     // Supabase reports database errors in the result, not as a rejection.
     if (error) throw new Error(error.message);
   } catch (error) {
