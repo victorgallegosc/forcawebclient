@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Car, RotateCcw, Undo2, XCircle } from "lucide-react";
+import { Car, RotateCcw, Sparkles, Undo2, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { PageShell, Panel, SectionLabel } from "@/components/app-shell";
@@ -9,6 +9,7 @@ import { isUs } from "@/components/league-bits";
 import { rideStateQuery, scheduleQuery } from "@/lib/queries";
 import {
   clearOverride,
+  explainRideBalances,
   setActualDriver,
   setCancelled,
   setOverrideDriver,
@@ -71,6 +72,10 @@ function AventonesPage() {
   const log = rideState.log;
   const [message, setMessage] = useState<string | null>(null);
   const [changeDay, setChangeDay] = useState<string | null>(null);
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [explanationSource, setExplanationSource] = useState<"ai" | "local" | null>(
+    null,
+  );
 
   const fixtureDays = useMemo(() => {
     const days = new Set<string>();
@@ -99,7 +104,18 @@ function AventonesPage() {
     onSuccess: async (result) => {
       setMessage(typeof result === "string" ? result : "Listo, rides actualizados.");
       setChangeDay(null);
+      setExplanation(null);
+      setExplanationSource(null);
       await queryClient.invalidateQueries({ queryKey: ["ride-state"] });
+    },
+    onError: (error: Error) => setMessage(error.message),
+  });
+
+  const explain = useMutation({
+    mutationFn: () => explainRideBalances(fixtureDays),
+    onSuccess: (result) => {
+      setExplanation(result.text);
+      setExplanationSource(result.source);
     },
     onError: (error: Error) => setMessage(error.message),
   });
@@ -164,6 +180,23 @@ function AventonesPage() {
               </div>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={() => explain.mutate()}
+            disabled={explain.isPending || fixtureDays.length === 0}
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-background/80 px-3.5 py-2.5 text-sm font-medium shadow-[inset_0_0_0_1px_var(--color-border)] transition-opacity disabled:opacity-60"
+          >
+            <Sparkles className="size-4" />
+            {explain.isPending ? "Explicando…" : "Explicar saldos"}
+          </button>
+          {explanation ? (
+            <div className="mt-4 rounded-xl bg-background/70 px-4 py-3.5 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-foreground/70">
+                {explanationSource === "ai" ? "Explicación IA" : "Explicación"}
+              </p>
+              {explanation}
+            </div>
+          ) : null}
         </div>
       </div>
 

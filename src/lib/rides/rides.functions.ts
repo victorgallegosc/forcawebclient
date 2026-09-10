@@ -153,3 +153,19 @@ export const undoLastFn = createServerFn({ method: "POST" }).handler(
     return (data as string | null) ?? null;
   },
 );
+
+export const explainRideBalancesFn = createServerFn({ method: "POST" })
+  .inputValidator((data) =>
+    z
+      .object({
+        fixtureDays: z.array(daySchema).min(1),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const state = await readState();
+    const { computeRotation } = await import("./rotation");
+    const { explainRideBalances } = await import("./explain");
+    const rotation = computeRotation(data.fixtureDays, state.adjustments);
+    return explainRideBalances(rotation);
+  });
