@@ -20,11 +20,9 @@ import {
 import { rideStateQuery, scheduleQuery, standingsQuery } from "@/lib/queries";
 import { computeRotation, formatDay, todayInMonterrey } from "@/lib/rides/rotation";
 import {
-  CATEGORY_NAME,
   OUR_GROUP_NAME,
   OUR_TEAM,
   OUR_TEAM_SHORT,
-  TOURNAMENT_NAME,
 } from "@/lib/zione/constants";
 import { cn } from "@/lib/utils";
 
@@ -124,7 +122,15 @@ function Index() {
               : "Todo listo para el torneo."}
           </h1>
           <p className="mt-3 max-w-md text-[15px] leading-relaxed text-muted-foreground">
-            {CATEGORY_NAME} · {OUR_GROUP_NAME}. {TOURNAMENT_NAME}.
+            {nextMatch
+              ? [
+                  nextMatch.date || (nextMatch.iso ? formatDay(nextMatch.iso) : null),
+                  nextMatch.time ? `${nextMatch.time} hrs` : null,
+                  nextMatch.place || null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "Detalles del partido por definir."
+              : "Sin próximo partido en el calendario."}
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link
