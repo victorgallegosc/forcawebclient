@@ -20,12 +20,19 @@ export type RideState = {
 const daySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida");
 const driverSchema = z.enum(DRIVERS);
 
+function ridesDbEnabled() {
+  return Boolean(process.env["SUPABASE_URL"] && process.env["SUPABASE_SERVICE_ROLE_KEY"]);
+}
+
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
 
 async function readState(): Promise<RideState> {
+  if (!ridesDbEnabled()) {
+    return { adjustments: [], log: [] };
+  }
   const db = await admin();
   const [days, log] = await Promise.all([
     db
