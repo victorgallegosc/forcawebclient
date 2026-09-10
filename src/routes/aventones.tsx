@@ -282,16 +282,6 @@ function AventonesPage() {
                     ? "Sin ride"
                     : `Dio el ride: ${day.actualDriver ?? day.driver}`}
                 </span>
-                {day.covered ? (
-                  <span className="rounded-md bg-accent/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">
-                    ajuste
-                  </span>
-                ) : null}
-                {day.covered ? (
-                  <span className="text-xs text-muted-foreground">
-                    (le tocaba a {day.dueDriver})
-                  </span>
-                ) : null}
                 {!day.cancelled && !day.actualDriver ? (
                   <div className="ml-auto flex flex-wrap gap-2">
                     {DRIVERS.map((driver) => (

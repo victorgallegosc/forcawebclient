@@ -1,6 +1,9 @@
 export const DRIVERS = ["Víctor", "Mau", "Gabo"] as const;
 export type Driver = (typeof DRIVERS)[number];
 
+/** First ride day of the tournament (2026-07-04) belonged to Gabo. */
+export const ROTATION_START: Driver = "Gabo";
+
 export type RideAdjustment = {
   day: string; // YYYY-MM-DD
   cancelled: boolean;
@@ -37,7 +40,8 @@ function isDriver(value: string | null | undefined): value is Driver {
 }
 
 /**
- * Round-robin Víctor → Mau → Gabo. Cancelled / sin-ride days skip the turn.
+ * Round-robin Víctor → Mau → Gabo, starting at ROTATION_START.
+ * Cancelled / sin-ride days skip the turn.
  * Covering someone else's ride grants a favor credit. Balances are relative:
  * if everyone has the same raw credit, they are a mano (balance 0).
  */
@@ -48,7 +52,7 @@ export function computeRotation(
   const byDay = new Map(adjustments.map((entry) => [entry.day, entry]));
   const credits: Record<Driver, number> = { "Víctor": 0, Mau: 0, Gabo: 0 };
   const days: RideDay[] = [];
-  let cursor = 0;
+  let cursor = DRIVERS.indexOf(ROTATION_START);
 
   for (const day of [...fixtureDays].sort()) {
     const entry = byDay.get(day);
