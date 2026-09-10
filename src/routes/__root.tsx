@@ -75,7 +75,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, viewport-fit=cover",
+      },
       { title: "Cancha · Fin de Semana 2026" },
       {
         name: "description",
@@ -83,8 +86,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Tabla, calendario, goleo y rides del F7 Sabatino Vespertino — 3er Torneo Fin de Semana 2026.",
       },
       { name: "author", content: "Cancha" },
+      { name: "application-name", content: "Cancha" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-title", content: "Cancha" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "theme-color", content: "#2A7A88" },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:title", content: "Cancha" },
+      { property: "og:site_name", content: "Cancha" },
+      { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Cancha" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -94,7 +106,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/favicon.ico", sizes: "any" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "manifest", href: "/site.webmanifest" },
     ],
   }),
   shellComponent: RootShell,
@@ -117,6 +132,11 @@ function RootShell({ children }: { children: ReactNode }) {
       <body>
         {children}
         <Scripts />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}`,
+          }}
+        />
       </body>
     </html>
   );
