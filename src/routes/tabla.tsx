@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { DataNote, Panel, PageShell, SectionLabel } from "@/components/app-shell";
+import { DataNote, PageShell, SectionLabel } from "@/components/app-shell";
 import { LeagueRetryError } from "@/components/league-error";
 import { StandingsTable } from "@/components/league-bits";
 import { standingsQuery } from "@/lib/queries";
@@ -14,12 +14,12 @@ export const Route = createFileRoute("/tabla")({
       {
         name: "description",
         content:
-          "Posiciones de los Grupos 4 A y 4 B de la F7 Sabatino Vespertino en el 3er Torneo Fin de Semana 2026.",
+          "Posiciones del grupo Recreativo de la F7 Sabatino Vespertino en el 4to Torneo Fin de Semana 2026.",
       },
       { property: "og:title", content: "Tabla · Cancha" },
       {
         property: "og:description",
-        content: "Posiciones al día de los Grupos 4 A y 4 B.",
+        content: "Posiciones al día del grupo Recreativo.",
       },
     ],
   }),
@@ -40,7 +40,7 @@ function TablaPage() {
     <PageShell
       eyebrow={CATEGORY_NAME}
       title="Tabla"
-      description={`${TOURNAMENT_NAME} · Grupos 4 A y 4 B`}
+      description={`${TOURNAMENT_NAME} · Recreativo`}
     >
       <div className="space-y-12 animate-rise">
         {data.data.map((group) => (

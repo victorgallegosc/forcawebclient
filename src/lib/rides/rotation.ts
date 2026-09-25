@@ -1,7 +1,7 @@
 export const DRIVERS = ["Gabo", "Mau", "Víctor"] as const;
 export type Driver = (typeof DRIVERS)[number];
 
-/** First ride day of the tournament (2026-07-04) belonged to Gabo. */
+/** First ride of each tournament starts with Gabo. */
 export const ROTATION_START: Driver = "Gabo";
 
 export type RideAdjustment = {

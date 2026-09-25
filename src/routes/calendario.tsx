@@ -15,12 +15,12 @@ export const Route = createFileRoute("/calendario")({
       {
         name: "description",
         content:
-          "Calendario y resultados semana por semana de los Grupos 4 A y 4 B, F7 Sabatino Vespertino.",
+          "Calendario y resultados semana por semana del grupo Recreativo, F7 Sabatino Vespertino.",
       },
       { property: "og:title", content: "Calendario · Cancha" },
       {
         property: "og:description",
-        content: "Calendario y resultados de los Grupos 4 A y 4 B.",
+        content: "Calendario y resultados del grupo Recreativo.",
       },
     ],
   }),
@@ -36,7 +36,7 @@ export const Route = createFileRoute("/calendario")({
 
 function CalendarioPage() {
   const { data } = useSuspenseQuery(scheduleQuery);
-  const [groupId, setGroupId] = useState<string>(GROUPS[1].id);
+  const [groupId, setGroupId] = useState<string>(GROUPS[0].id);
   const [onlyUs, setOnlyUs] = useState(true);
 
   const group = data.data.find((entry) => entry.groupId === groupId) ?? data.data[0];

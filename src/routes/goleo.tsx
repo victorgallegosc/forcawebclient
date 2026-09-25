@@ -16,7 +16,7 @@ export const Route = createFileRoute("/goleo")({
       {
         name: "description",
         content:
-          "Tabla de goleo individual y tarjetas de los Grupos 4 A y 4 B en la F7 Sabatino Vespertino.",
+          "Tabla de goleo individual y tarjetas del grupo Recreativo en la F7 Sabatino Vespertino.",
       },
       { property: "og:title", content: "Goleo · Cancha" },
       { property: "og:description", content: "Goleo individual y tarjetas por grupo." },
@@ -84,7 +84,7 @@ function GoleoPage() {
     <PageShell
       eyebrow="Estadísticas"
       title="Goleo y tarjetas"
-      description="Goleadores y tarjetas de los Grupos 4 A y 4 B."
+      description="Goleadores y tarjetas del grupo Recreativo."
     >
       <div className="mb-8 flex gap-2 animate-fade-in">
         {(["goleo", "tarjetas"] as const).map((option) => (

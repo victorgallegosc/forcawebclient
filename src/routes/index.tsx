@@ -33,7 +33,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Próximo partido, forma reciente, rival y quién da el ride — F7 Sabatino Vespertino, Grupo 4 B.",
+          "Próximo partido, forma reciente, rival y quién da el ride — F7 Sabatino Vespertino, Recreativo.",
       },
       { property: "og:title", content: "Cancha · Fin de Semana 2026" },
       {
