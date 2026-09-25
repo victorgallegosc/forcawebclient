@@ -2,7 +2,8 @@ import type { RideAdjustment } from "./rotation";
 
 /**
  * Ride history for the 4to Torneo Fin de Semana 2026 (Gabo / Mau / Víctor).
- * Rotation: Gabo → Mau → Víctor. Empty until the first rides of this tournament.
+ * Rotation order: Gabo → Mau → Víctor. Starts with Víctor (carry-over after the
+ * previous match had no ride). Empty until rides of this tournament are logged.
  */
 export const TOURNAMENT_RIDE_SEED: RideAdjustment[] = [];
 
