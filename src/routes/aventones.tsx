@@ -32,7 +32,7 @@ export const Route = createFileRoute("/aventones")({
       {
         name: "description",
         content:
-          "Quién da el ride cada sábado: rotación Gabo → Mau → Víctor, con cambios y días sin ride.",
+          "Quién da el ride cada sábado del 4to Torneo Fin de Semana 2026: rotación Gabo → Mau → Víctor.",
       },
       { property: "og:title", content: "Ride · Cancha" },
       { property: "og:description", content: "A quién le toca el ride este sábado." },

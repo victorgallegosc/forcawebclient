@@ -79,7 +79,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "viewport",
         content: "width=device-width, initial-scale=1, viewport-fit=cover",
       },
-      { title: "Cancha · Fin de Semana 2026" },
+      { title: "Cancha · 4to Torneo Fin de Semana 2026" },
       {
         name: "description",
         content:

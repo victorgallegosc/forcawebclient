@@ -5,7 +5,7 @@ import { DataNote, PageShell, SectionLabel } from "@/components/app-shell";
 import { LeagueRetryError } from "@/components/league-error";
 import { StandingsTable } from "@/components/league-bits";
 import { standingsQuery } from "@/lib/queries";
-import { CATEGORY_NAME, TOURNAMENT_NAME } from "@/lib/zione/constants";
+import { CATEGORY_NAME, OUR_GROUP_NAME, TOURNAMENT_NAME } from "@/lib/zione/constants";
 
 export const Route = createFileRoute("/tabla")({
   head: () => ({
@@ -40,7 +40,7 @@ function TablaPage() {
     <PageShell
       eyebrow={CATEGORY_NAME}
       title="Tabla"
-      description={`${TOURNAMENT_NAME} · Recreativo`}
+      description={`${TOURNAMENT_NAME} · ${OUR_GROUP_NAME}`}
     >
       <div className="space-y-12 animate-rise">
         {data.data.map((group) => (

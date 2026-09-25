@@ -19,7 +19,7 @@ export const Route = createFileRoute("/goleo")({
           "Tabla de goleo individual y tarjetas del grupo Recreativo en la F7 Sabatino Vespertino.",
       },
       { property: "og:title", content: "Goleo · Cancha" },
-      { property: "og:description", content: "Goleo individual y tarjetas por grupo." },
+      { property: "og:description", content: "Goleo individual y tarjetas del grupo Recreativo." },
     ],
   }),
   loader: async ({ context }) => {
