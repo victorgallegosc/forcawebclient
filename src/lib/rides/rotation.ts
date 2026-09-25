@@ -1,8 +1,12 @@
 export const DRIVERS = ["Gabo", "Mau", "Víctor"] as const;
 export type Driver = (typeof DRIVERS)[number];
 
-/** First ride of each tournament starts with Gabo. */
-export const ROTATION_START: Driver = "Gabo";
+/**
+ * Who is due for the first fixture of this tournament.
+ * Continues from the 3er torneo (after Mau on 2026-08-29 the next was Víctor);
+ * the last match had no ride, so Víctor stays due.
+ */
+export const ROTATION_START: Driver = "Víctor";
 
 export type RideAdjustment = {
   day: string; // YYYY-MM-DD
