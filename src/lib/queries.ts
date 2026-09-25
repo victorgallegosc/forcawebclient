@@ -4,9 +4,10 @@ import { getCards, getSchedule, getScorers, getStandings } from "./league.functi
 import { getRideState } from "./rides/rides.functions";
 import { getDriverRouteFn } from "./rides/maps.functions";
 import type { Driver } from "./rides/rotation";
+import { TOURNAMENT_ID } from "./zione/constants";
 
 export const standingsQuery = queryOptions({
-  queryKey: ["standings"],
+  queryKey: ["standings", TOURNAMENT_ID],
   queryFn: () => getStandings(),
   staleTime: 5 * 60 * 1000,
   retry: 2,
@@ -14,7 +15,7 @@ export const standingsQuery = queryOptions({
 });
 
 export const scheduleQuery = queryOptions({
-  queryKey: ["schedule"],
+  queryKey: ["schedule", TOURNAMENT_ID],
   queryFn: () => getSchedule(),
   staleTime: 5 * 60 * 1000,
   retry: 2,
@@ -22,7 +23,7 @@ export const scheduleQuery = queryOptions({
 });
 
 export const scorersQuery = queryOptions({
-  queryKey: ["scorers"],
+  queryKey: ["scorers", TOURNAMENT_ID],
   queryFn: () => getScorers(),
   staleTime: 5 * 60 * 1000,
   retry: 2,
@@ -30,7 +31,7 @@ export const scorersQuery = queryOptions({
 });
 
 export const cardsQuery = queryOptions({
-  queryKey: ["cards"],
+  queryKey: ["cards", TOURNAMENT_ID],
   queryFn: () => getCards(),
   staleTime: 5 * 60 * 1000,
   retry: 2,
@@ -39,14 +40,14 @@ export const cardsQuery = queryOptions({
 
 /** Loaded on the server too, so the first render already knows the rotation. */
 export const rideStateQuery = queryOptions({
-  queryKey: ["ride-state"],
+  queryKey: ["ride-state", TOURNAMENT_ID],
   queryFn: () => getRideState(),
   staleTime: 30 * 1000,
 });
 
 export function driverRouteQuery(driver: Driver) {
   return queryOptions({
-    queryKey: ["driver-route", driver],
+    queryKey: ["driver-route", TOURNAMENT_ID, driver],
     queryFn: () => getDriverRouteFn({ data: { driver } }),
     staleTime: 10 * 60 * 1000,
   });

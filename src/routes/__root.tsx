@@ -79,11 +79,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "viewport",
         content: "width=device-width, initial-scale=1, viewport-fit=cover",
       },
-      { title: "Cancha · Fin de Semana 2026" },
+      { title: "Cancha · 4to Torneo Fin de Semana 2026" },
       {
         name: "description",
         content:
-          "Tabla, calendario, goleo y rides del F7 Sabatino Vespertino — 3er Torneo Fin de Semana 2026.",
+          "Tabla, calendario, goleo y rides del F7 Sabatino Vespertino — 4to Torneo Fin de Semana 2026.",
       },
       { name: "author", content: "Cancha" },
       { name: "application-name", content: "Cancha" },

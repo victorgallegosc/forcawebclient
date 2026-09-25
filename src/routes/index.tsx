@@ -23,19 +23,20 @@ import {
   OUR_GROUP_NAME,
   OUR_TEAM,
   OUR_TEAM_SHORT,
+  TOURNAMENT_NAME,
 } from "@/lib/zione/constants";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Cancha · Fin de Semana 2026" },
+      { title: `Cancha · ${TOURNAMENT_NAME}` },
       {
         name: "description",
         content:
-          "Próximo partido, forma reciente, rival y quién da el ride — F7 Sabatino Vespertino, Grupo 4 B.",
+          "Próximo partido, forma reciente, rival y quién da el ride — F7 Sabatino Vespertino, Recreativo.",
       },
-      { property: "og:title", content: "Cancha · Fin de Semana 2026" },
+      { property: "og:title", content: `Cancha · ${TOURNAMENT_NAME}` },
       {
         property: "og:description",
         content: "Lo del sábado: partido, tabla y ride.",
@@ -305,9 +306,10 @@ function Index() {
               <div>
                 <SectionLabel>Grupo</SectionLabel>
                 <h2 className="mt-2 text-2xl">{ourGroup.groupName}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{TOURNAMENT_NAME}</p>
               </div>
               <Link to="/tabla" className="shrink-0 text-sm font-semibold text-primary hover:underline">
-                Ambos grupos
+                Ver tabla
               </Link>
             </div>
             <StandingsTable rows={ourGroup.rows} />
