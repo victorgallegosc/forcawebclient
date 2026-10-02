@@ -24,7 +24,8 @@ export const Route = createFileRoute("/calendario")({
       },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(scheduleQuery),
+  // fetchQuery (not ensureQueryData) so stale calendario refetches on navigate.
+  loader: ({ context }) => context.queryClient.fetchQuery(scheduleQuery),
   component: CalendarioPage,
   errorComponent: () => (
     <LeagueRetryError

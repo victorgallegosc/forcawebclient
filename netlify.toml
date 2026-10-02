@@ -16,3 +16,9 @@
 
 [functions]
   directory = "netlify/functions"
+
+# League scrapes and server functions must never be cached by browsers / CDNs.
+[[headers]]
+  for = "/_serverFn/*"
+  [headers.values]
+    Cache-Control = "no-store, max-age=0"

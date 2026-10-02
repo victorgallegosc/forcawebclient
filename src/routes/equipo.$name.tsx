@@ -38,8 +38,8 @@ export const Route = createFileRoute("/equipo/$name")({
   },
   loader: async ({ context }) => {
     await Promise.all([
-      context.queryClient.ensureQueryData(scheduleQuery),
-      context.queryClient.ensureQueryData(standingsQuery),
+      context.queryClient.fetchQuery(scheduleQuery),
+      context.queryClient.fetchQuery(standingsQuery),
     ]);
   },
   component: EquipoPage,

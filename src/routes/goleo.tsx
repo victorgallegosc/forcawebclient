@@ -24,8 +24,8 @@ export const Route = createFileRoute("/goleo")({
   }),
   loader: async ({ context }) => {
     await Promise.allSettled([
-      context.queryClient.ensureQueryData(scorersQuery),
-      context.queryClient.ensureQueryData(cardsQuery),
+      context.queryClient.fetchQuery(scorersQuery),
+      context.queryClient.fetchQuery(cardsQuery),
     ]);
   },
   component: GoleoPage,

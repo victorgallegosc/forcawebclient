@@ -23,7 +23,7 @@ export const Route = createFileRoute("/tabla")({
       },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(standingsQuery),
+  loader: ({ context }) => context.queryClient.fetchQuery(standingsQuery),
   component: TablaPage,
   errorComponent: () => (
     <LeagueRetryError

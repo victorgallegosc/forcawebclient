@@ -6,10 +6,15 @@ import { getDriverRouteFn } from "./rides/maps.functions";
 import type { Driver } from "./rides/rotation";
 import { TOURNAMENT_ID } from "./zione/constants";
 
+/** League scrapes change when Zione publica jornadas; keep them short-lived. */
+const LEAGUE_STALE_MS = 60 * 1000;
+
 export const standingsQuery = queryOptions({
   queryKey: ["standings", TOURNAMENT_ID],
   queryFn: () => getStandings(),
-  staleTime: 5 * 60 * 1000,
+  staleTime: LEAGUE_STALE_MS,
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
   retry: 2,
   retryDelay: (attempt: number) => 400 * (attempt + 1),
 });
@@ -17,7 +22,9 @@ export const standingsQuery = queryOptions({
 export const scheduleQuery = queryOptions({
   queryKey: ["schedule", TOURNAMENT_ID],
   queryFn: () => getSchedule(),
-  staleTime: 5 * 60 * 1000,
+  staleTime: LEAGUE_STALE_MS,
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
   retry: 2,
   retryDelay: (attempt: number) => 400 * (attempt + 1),
 });
@@ -25,7 +32,9 @@ export const scheduleQuery = queryOptions({
 export const scorersQuery = queryOptions({
   queryKey: ["scorers", TOURNAMENT_ID],
   queryFn: () => getScorers(),
-  staleTime: 5 * 60 * 1000,
+  staleTime: LEAGUE_STALE_MS,
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
   retry: 2,
   retryDelay: (attempt: number) => 400 * (attempt + 1),
 });
@@ -33,7 +42,9 @@ export const scorersQuery = queryOptions({
 export const cardsQuery = queryOptions({
   queryKey: ["cards", TOURNAMENT_ID],
   queryFn: () => getCards(),
-  staleTime: 5 * 60 * 1000,
+  staleTime: LEAGUE_STALE_MS,
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
   retry: 2,
   retryDelay: (attempt: number) => 400 * (attempt + 1),
 });
