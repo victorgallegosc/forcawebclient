@@ -30,7 +30,7 @@ export const Route = createFileRoute("/ride/$day")({
   }),
   loader: async ({ context }) => {
     await Promise.all([
-      context.queryClient.ensureQueryData(scheduleQuery),
+      context.queryClient.fetchQuery(scheduleQuery),
       context.queryClient.ensureQueryData(rideStateQuery),
     ]);
   },

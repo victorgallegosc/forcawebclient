@@ -36,7 +36,7 @@ export const Route = createFileRoute("/partido/$iso")({
   }),
   loader: async ({ context }) => {
     await Promise.all([
-      context.queryClient.ensureQueryData(scheduleQuery),
+      context.queryClient.fetchQuery(scheduleQuery),
       context.queryClient.ensureQueryData(rideStateQuery),
     ]);
   },

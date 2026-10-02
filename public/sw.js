@@ -1,6 +1,11 @@
-/* Minimal service worker so the app can be installed as a PWA. */
-const CACHE = "cancha-shell-v1";
-const PRECACHE = ["/", "/favicon.svg", "/icons/icon-192.png"];
+/* Minimal service worker so the app can be installed as a PWA.
+ *
+ * League data is scraped live via `/_serverFn/*` and SSR HTML — never
+ * cache those, or the calendario keeps showing partidos viejos after
+ * Zione publica jornadas nuevas.
+ */
+const CACHE = "cancha-shell-v2";
+const PRECACHE = ["/favicon.svg", "/icons/icon-192.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -16,36 +21,68 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+function isLiveDataRequest(url) {
+  return (
+    url.pathname.startsWith("/_serverFn/") ||
+    url.pathname.startsWith("/api/") ||
+    url.searchParams.has("_serverFn")
+  );
+}
+
+function isStaticAsset(url) {
+  return (
+    url.origin === self.location.origin &&
+    (url.pathname.startsWith("/assets/") ||
+      url.pathname.startsWith("/icons/") ||
+      url.pathname === "/favicon.svg" ||
+      url.pathname === "/favicon.ico" ||
+      url.pathname === "/apple-touch-icon.png" ||
+      url.pathname === "/site.webmanifest" ||
+      url.pathname === "/sw.js")
+  );
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
-  // Network-first for navigations so league data stays fresh.
+  const url = new URL(request.url);
+
+  // Always hit the network for live league / server-function data.
+  if (isLiveDataRequest(url)) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  // Network-first for navigations so SSR league data stays fresh.
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => caches.match(request).then((cached) => cached || caches.match("/"))),
+        .then((response) => response)
+        .catch(() => caches.match("/") || caches.match(request)),
     );
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      const fetched = fetch(request)
-        .then((response) => {
-          if (response.ok && request.url.startsWith(self.location.origin)) {
-            const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(() => cached);
-      return cached || fetched;
-    }),
-  );
+  // Cache-first only for hashed static assets / icons.
+  if (isStaticAsset(url)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const fetched = fetch(request)
+          .then((response) => {
+            if (response.ok) {
+              const copy = response.clone();
+              caches.open(CACHE).then((cache) => cache.put(request, copy));
+            }
+            return response;
+          })
+          .catch(() => cached);
+        return cached || fetched;
+      }),
+    );
+    return;
+  }
+
+  // Default: network only (do not poison the cache with HTML shells / RPCs).
+  event.respondWith(fetch(request));
 });

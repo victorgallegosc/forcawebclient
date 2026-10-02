@@ -46,8 +46,8 @@ export const Route = createFileRoute("/")({
   loader: async ({ context }) => {
     void context.queryClient.ensureQueryData(rideStateQuery).catch(() => null);
     await Promise.allSettled([
-      context.queryClient.ensureQueryData(scheduleQuery),
-      context.queryClient.ensureQueryData(standingsQuery),
+      context.queryClient.fetchQuery(scheduleQuery),
+      context.queryClient.fetchQuery(standingsQuery),
     ]);
   },
   component: Index,
