@@ -21,13 +21,15 @@ export type RideState = {
 const daySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida");
 const driverSchema = z.enum(DRIVERS);
 
+// Always on: the public client has built-in connection defaults, and every
+// write goes through security-definer database functions.
 function ridesDbEnabled() {
-  return Boolean(process.env["SUPABASE_URL"] && process.env["SUPABASE_SERVICE_ROLE_KEY"]);
+  return true;
 }
 
 async function admin() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return supabaseAdmin;
+  const { publicDb } = await import("@/lib/supabase-public");
+  return publicDb();
 }
 
 async function readState(): Promise<RideState> {
