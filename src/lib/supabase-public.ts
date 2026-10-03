@@ -9,12 +9,10 @@ const DEFAULT_URL = "https://leggouvupbatbzihmwxw.supabase.co";
 const DEFAULT_KEY = "sb_publishable_x01V98AhdUvMCBhddnpWsA_gVTJzrVa";
 
 function build() {
-  const url =
-    import.meta.env["VITE_SUPABASE_URL"] || process.env["SUPABASE_URL"] || DEFAULT_URL;
-  const key =
-    import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
-    process.env["SUPABASE_PUBLISHABLE_KEY"] ||
-    DEFAULT_KEY;
+  // Fixed on purpose: the rides database lives in Lovable Cloud, so host
+  // environment variables (which may point elsewhere) are ignored.
+  const url = DEFAULT_URL;
+  const key = DEFAULT_KEY;
 
   return createClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
