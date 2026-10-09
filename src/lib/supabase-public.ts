@@ -1,45 +1,35 @@
-// Publishable-key client for server-side use. Works on any host (Netlify
-// included) without a private service key: tables are read-only and every
-// write goes through narrow security-definer database functions.
+// Publishable-key client for server-side ride reads/writes. Uses the same
+// Supabase env as the rest of the app (set on Vercel). No service role key:
+// tables are read-only for this key; writes go through security-definer RPCs.
 import { createClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
-
-const DEFAULT_URL = "https://leggouvupbatbzihmwxw.supabase.co";
-const DEFAULT_KEY = "sb_publishable_x01V98AhdUvMCBhddnpWsA_gVTJzrVa";
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
 }
 
-/** Netlify sometimes sets VITE_SUPABASE_URL to the site origin — ignore that. */
-function isUsableSupabaseUrl(value: string | undefined): value is string {
-  if (!value) return false;
-  try {
-    const host = new URL(value).hostname;
-    return host.endsWith(".supabase.co") || host.endsWith(".supabase.in");
-  } catch {
-    return false;
-  }
-}
-
-function resolveUrl() {
-  const fromEnv = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
-  // Prefer a real Supabase host from env; otherwise the Lovable Cloud project.
-  return isUsableSupabaseUrl(fromEnv) ? fromEnv : DEFAULT_URL;
-}
-
-function resolveKey() {
-  return (
+function resolveCredentials() {
+  const url = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
+  const key =
     process.env["SUPABASE_PUBLISHABLE_KEY"] ||
-    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
-    DEFAULT_KEY
-  );
+    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
+
+  if (!url || !key) {
+    const missing = [
+      ...(!url ? ["SUPABASE_URL"] : []),
+      ...(!key ? ["SUPABASE_PUBLISHABLE_KEY"] : []),
+    ];
+    throw new Error(
+      `Missing Supabase environment variable(s): ${missing.join(", ")}. Set them on Vercel (or locally in .env).`,
+    );
+  }
+
+  return { url, key };
 }
 
 function build() {
-  const url = resolveUrl();
-  const key = resolveKey();
+  const { url, key } = resolveCredentials();
 
   return createClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
