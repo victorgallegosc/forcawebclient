@@ -12,14 +12,21 @@ function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
 }
 
+/** Netlify sometimes sets VITE_SUPABASE_URL to the site origin — ignore that. */
+function isUsableSupabaseUrl(value: string | undefined): value is string {
+  if (!value) return false;
+  try {
+    const host = new URL(value).hostname;
+    return host.endsWith(".supabase.co") || host.endsWith(".supabase.in");
+  } catch {
+    return false;
+  }
+}
+
 function resolveUrl() {
-  // Prefer host env (Lovable / Netlify) so a rotated Cloud project still works.
-  // Fall back to the known Lovable Cloud project when env is unset.
-  return (
-    process.env["SUPABASE_URL"] ||
-    process.env["VITE_SUPABASE_URL"] ||
-    DEFAULT_URL
-  );
+  const fromEnv = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
+  // Prefer a real Supabase host from env; otherwise the Lovable Cloud project.
+  return isUsableSupabaseUrl(fromEnv) ? fromEnv : DEFAULT_URL;
 }
 
 function resolveKey() {

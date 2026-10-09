@@ -26,40 +26,28 @@ async function admin() {
   return publicDb();
 }
 
-function seedState(): RideState {
-  return { adjustments: mergeRideAdjustments(TOURNAMENT_RIDE_SEED, []), log: [] };
-}
-
 async function readState(): Promise<RideState> {
-  // Prefer the Lovable Cloud DB (publishable key + security-definer RPCs).
-  // If the host is unreachable or the query fails, fall back to the local
-  // seed so /aventones still navigates instead of blocking on a dead fetch.
-  try {
-    const db = await admin();
-    const [days, log] = await Promise.all([
-      db
-        .from("ride_days")
-        .select("day, cancelled, override_driver, actual_driver, note")
-        .order("day"),
-      db
-        .from("ride_log")
-        .select("id, action, summary, prev_state, undone, created_at")
-        .order("created_at", { ascending: false })
-        .limit(15),
-    ]);
-    if (days.error) throw new Error(days.error.message);
-    if (log.error) throw new Error(log.error.message);
-    return {
-      adjustments: mergeRideAdjustments(
-        TOURNAMENT_RIDE_SEED,
-        (days.data ?? []) as RideAdjustment[],
-      ),
-      log: (log.data ?? []) as unknown as RideLogEntry[],
-    };
-  } catch (error) {
-    console.error("[rides] DB read failed; using seed rotation.", error);
-    return seedState();
-  }
+  const db = await admin();
+  const [days, log] = await Promise.all([
+    db
+      .from("ride_days")
+      .select("day, cancelled, override_driver, actual_driver, note")
+      .order("day"),
+    db
+      .from("ride_log")
+      .select("id, action, summary, prev_state, undone, created_at")
+      .order("created_at", { ascending: false })
+      .limit(15),
+  ]);
+  if (days.error) throw new Error(days.error.message);
+  if (log.error) throw new Error(log.error.message);
+  return {
+    adjustments: mergeRideAdjustments(
+      TOURNAMENT_RIDE_SEED,
+      (days.data ?? []) as RideAdjustment[],
+    ),
+    log: (log.data ?? []) as unknown as RideLogEntry[],
+  };
 }
 
 /**

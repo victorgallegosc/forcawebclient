@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowRight, RotateCcw, Sparkles, Undo2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -39,10 +39,10 @@ export const Route = createFileRoute("/aventones")({
     ],
   }),
   loader: async ({ context }) => {
-    // Schedule is required for the agenda; ride state soft-fails so a dead
-    // DB never blocks navigating into Ride (seed rotation still renders).
-    await context.queryClient.fetchQuery(scheduleQuery);
-    await context.queryClient.ensureQueryData(rideStateQuery).catch(() => null);
+    await Promise.all([
+      context.queryClient.fetchQuery(scheduleQuery),
+      context.queryClient.ensureQueryData(rideStateQuery),
+    ]);
   },
   component: AventonesPage,
   errorComponent: () => (
@@ -67,10 +67,9 @@ function timeAgo(iso: string) {
 function AventonesPage() {
   const queryClient = useQueryClient();
   const schedule = useSuspenseQuery(scheduleQuery).data;
-  // Soft query: loader already best-efforts ride state; empty seed keeps UI usable.
-  const rideState = useQuery(rideStateQuery);
-  const adjustments = rideState.data?.adjustments ?? [];
-  const log = rideState.data?.log ?? [];
+  const rideState = useSuspenseQuery(rideStateQuery).data;
+  const adjustments = rideState.adjustments;
+  const log = rideState.log;
   const [message, setMessage] = useState<string | null>(null);
   const [changeDay, setChangeDay] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
