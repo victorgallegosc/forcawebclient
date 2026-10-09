@@ -8,18 +8,44 @@ import type { Database } from "@/integrations/supabase/types";
 const DEFAULT_URL = "https://leggouvupbatbzihmwxw.supabase.co";
 const DEFAULT_KEY = "sb_publishable_x01V98AhdUvMCBhddnpWsA_gVTJzrVa";
 
+function isNewSupabaseApiKey(value: string): boolean {
+  return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
+}
+
+function resolveUrl() {
+  // Prefer host env (Lovable / Netlify) so a rotated Cloud project still works.
+  // Fall back to the known Lovable Cloud project when env is unset.
+  return (
+    process.env["SUPABASE_URL"] ||
+    process.env["VITE_SUPABASE_URL"] ||
+    DEFAULT_URL
+  );
+}
+
+function resolveKey() {
+  return (
+    process.env["SUPABASE_PUBLISHABLE_KEY"] ||
+    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
+    DEFAULT_KEY
+  );
+}
+
 function build() {
-  // Fixed on purpose: the rides database lives in Lovable Cloud, so host
-  // environment variables (which may point elsewhere) are ignored.
-  const url = DEFAULT_URL;
-  const key = DEFAULT_KEY;
+  const url = resolveUrl();
+  const key = resolveKey();
 
   return createClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: {
       fetch: (input, init) => {
         const headers = new Headers(init?.headers);
-        if (headers.get("Authorization") === `Bearer ${key}`) headers.delete("Authorization");
+        // New Supabase API keys are opaque strings, not bearer JWTs.
+        if (
+          isNewSupabaseApiKey(key) &&
+          headers.get("Authorization") === `Bearer ${key}`
+        ) {
+          headers.delete("Authorization");
+        }
         headers.set("apikey", key);
         return fetch(input, { ...init, headers });
       },

@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft, Car, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -29,10 +29,8 @@ export const Route = createFileRoute("/ride/$day")({
     ],
   }),
   loader: async ({ context }) => {
-    await Promise.all([
-      context.queryClient.fetchQuery(scheduleQuery),
-      context.queryClient.ensureQueryData(rideStateQuery),
-    ]);
+    await context.queryClient.fetchQuery(scheduleQuery);
+    await context.queryClient.ensureQueryData(rideStateQuery).catch(() => null);
   },
   component: RideDetailPage,
   errorComponent: () => (
@@ -70,13 +68,14 @@ function RideDetailPage() {
   const { day } = Route.useParams();
   const queryClient = useQueryClient();
   const schedule = useSuspenseQuery(scheduleQuery).data;
-  const rideState = useSuspenseQuery(rideStateQuery).data;
+  const rideState = useQuery(rideStateQuery);
+  const adjustments = rideState.data?.adjustments ?? [];
   const [message, setMessage] = useState<string | null>(null);
 
   const fixtureDays = useMemo(() => ourFixtureDays(schedule.data), [schedule.data]);
   const rotation = useMemo(
-    () => computeRotation(fixtureDays, rideState.adjustments),
-    [fixtureDays, rideState.adjustments],
+    () => computeRotation(fixtureDays, adjustments),
+    [fixtureDays, adjustments],
   );
   const rideDay = rotation.days.find((entry) => entry.day === day) ?? null;
   const match = useMemo(() => findOurMatch(schedule.data, day), [schedule.data, day]);
