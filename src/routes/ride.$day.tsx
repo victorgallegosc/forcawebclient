@@ -39,6 +39,7 @@ export const Route = createFileRoute("/ride/$day")({
     <LeagueRetryError
       title="Ride"
       description="No pudimos cargar el detalle del ride."
+      detail="No pudimos conectar con la base de rides. Vuelve a intentar en un momento."
     />
   ),
 });

@@ -1,6 +1,6 @@
-// Publishable-key client for server-side ride reads/writes. Uses the same
-// Supabase env as the rest of the app (set on Vercel). No service role key:
-// tables are read-only for this key; writes go through security-definer RPCs.
+// Publishable-key client for server-side ride reads/writes. Uses host env
+// (Vercel / Netlify): SUPABASE_URL + SUPABASE_PUBLISHABLE_KEY. No service role
+// key — tables are read-only for this key; writes go through security-definer RPCs.
 import { createClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
@@ -9,19 +9,46 @@ function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
 }
 
+/** True only for a real Supabase API host — not the app's own Netlify/Vercel URL. */
+function isUsableSupabaseUrl(value: string | undefined): value is string {
+  if (!value) return false;
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    return host.endsWith(".supabase.co") || host.endsWith(".supabase.in");
+  } catch {
+    return false;
+  }
+}
+
 function resolveCredentials() {
-  const url = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
   const key =
     process.env["SUPABASE_PUBLISHABLE_KEY"] ||
     process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
 
+  const projectId =
+    process.env["SUPABASE_PROJECT_ID"] ||
+    process.env["VITE_SUPABASE_PROJECT_ID"];
+
+  // Prefer server env, then Vite env — but never the site origin mistaken for Supabase.
+  const urlFromEnv = [
+    process.env["SUPABASE_URL"],
+    process.env["VITE_SUPABASE_URL"],
+  ].find(isUsableSupabaseUrl);
+
+  const urlFromProjectId =
+    projectId && /^[a-z0-9]{10,}$/i.test(projectId)
+      ? `https://${projectId}.supabase.co`
+      : undefined;
+
+  const url = urlFromEnv ?? urlFromProjectId;
+
   if (!url || !key) {
     const missing = [
-      ...(!url ? ["SUPABASE_URL"] : []),
+      ...(!url ? ["SUPABASE_URL (must be https://<ref>.supabase.co)"] : []),
       ...(!key ? ["SUPABASE_PUBLISHABLE_KEY"] : []),
     ];
     throw new Error(
-      `Missing Supabase environment variable(s): ${missing.join(", ")}. Set them on Vercel (or locally in .env).`,
+      `Missing or invalid Supabase env: ${missing.join(", ")}. Copy the same values from Vercel into this host.`,
     );
   }
 

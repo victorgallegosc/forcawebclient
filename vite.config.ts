@@ -6,9 +6,13 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// Let Nitro auto-detect the host (Vercel / Netlify / …). Forcing "netlify" broke
+// Vercel deploys that already have the correct SUPABASE_* env. Netlify CI sets
+// NITRO_PRESET=netlify in netlify.toml.
+const nitroPreset = process.env["NITRO_PRESET"];
+
 export default defineConfig({
-  // Outside Lovable's own build (e.g. on Netlify CI) target the Netlify preset.
-  nitro: { preset: "netlify" },
+  ...(nitroPreset ? { nitro: { preset: nitroPreset } } : {}),
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this

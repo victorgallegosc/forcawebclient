@@ -49,6 +49,7 @@ export const Route = createFileRoute("/aventones")({
     <LeagueRetryError
       title="Ride"
       description="No pudimos cargar los rides por ahora."
+      detail="No pudimos conectar con la base de rides. Vuelve a intentar en un momento."
     />
   ),
 });

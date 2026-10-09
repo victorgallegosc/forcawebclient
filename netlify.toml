@@ -1,5 +1,6 @@
 [build]
-  command = "npm run build"
+  # Explicit Netlify preset: vite.config auto-detects elsewhere (e.g. Vercel).
+  command = "NITRO_PRESET=netlify npm run build"
   publish = "dist"
   # Keep functions out of publish/dist — otherwise Netlify treats public/sw.js
   # (copied into dist/) as a serverless function and the deploy fails.
@@ -13,6 +14,10 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # Ride needs a real Supabase API host (same values as Vercel), NOT the site URL:
+  #   SUPABASE_URL=https://<project-ref>.supabase.co
+  #   SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+  # Do not set VITE_SUPABASE_URL to https://forcawebclient.netlify.app.
 
 [functions]
   directory = "netlify/functions"
