@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowRight, RotateCcw, Sparkles, Undo2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -39,10 +39,10 @@ export const Route = createFileRoute("/aventones")({
     ],
   }),
   loader: async ({ context }) => {
-    await Promise.all([
-      context.queryClient.fetchQuery(scheduleQuery),
-      context.queryClient.ensureQueryData(rideStateQuery),
-    ]);
+    // Calendar is enough to render the rotation. Always try Supabase ride
+    // state (Vercel env), but never block the page if that call fails.
+    await context.queryClient.fetchQuery(scheduleQuery);
+    await context.queryClient.ensureQueryData(rideStateQuery).catch(() => null);
   },
   component: AventonesPage,
   errorComponent: () => (
@@ -68,9 +68,10 @@ function timeAgo(iso: string) {
 function AventonesPage() {
   const queryClient = useQueryClient();
   const schedule = useSuspenseQuery(scheduleQuery).data;
-  const rideState = useSuspenseQuery(rideStateQuery).data;
-  const adjustments = rideState.adjustments;
-  const log = rideState.log;
+  // Same pattern as Inicio: schedule is required; ride DB is best-effort.
+  const rideState = useQuery(rideStateQuery);
+  const adjustments = rideState.data?.adjustments ?? [];
+  const log = rideState.data?.log ?? [];
   const [message, setMessage] = useState<string | null>(null);
   const [changeDay, setChangeDay] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
@@ -189,6 +190,16 @@ function AventonesPage() {
           ) : null}
         </div>
       </div>
+
+      {rideState.isError ? (
+        <p
+          role="status"
+          className="mt-6 animate-fade-in rounded-xl bg-secondary/60 px-4 py-3.5 text-sm text-muted-foreground"
+        >
+          Mostrando la rotación del calendario. Los cambios guardados en la base no
+          están disponibles ahora.
+        </p>
+      ) : null}
 
       {message ? (
         <p

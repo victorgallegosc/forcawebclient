@@ -24,7 +24,9 @@ function isUsableSupabaseUrl(value: string | undefined): value is string {
 function resolveCredentials() {
   const key =
     process.env["SUPABASE_PUBLISHABLE_KEY"] ||
-    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
+    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
+    process.env["SUPABASE_ANON_KEY"] ||
+    process.env["VITE_SUPABASE_ANON_KEY"];
 
   const projectId =
     process.env["SUPABASE_PROJECT_ID"] ||
@@ -34,6 +36,7 @@ function resolveCredentials() {
   const urlFromEnv = [
     process.env["SUPABASE_URL"],
     process.env["VITE_SUPABASE_URL"],
+    process.env["NEXT_PUBLIC_SUPABASE_URL"],
   ].find(isUsableSupabaseUrl);
 
   const urlFromProjectId =

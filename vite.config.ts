@@ -6,15 +6,12 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-// Production host is Vercel (SUPABASE_* env lives there). Vercel sets VERCEL=1
-// during build; Nitro must use the vercel preset — the old hard-coded "netlify"
-// preset broke SSR/server functions on Vercel. Override with NITRO_PRESET if needed.
-const nitroPreset =
-  process.env["NITRO_PRESET"] ||
-  (process.env["VERCEL"] ? "vercel" : undefined);
+// Production host is Vercel. Default to the vercel Nitro preset so SSR / server
+// functions work there. Override with NITRO_PRESET (e.g. netlify for legacy CI).
+const nitroPreset = process.env["NITRO_PRESET"] || "vercel";
 
 export default defineConfig({
-  ...(nitroPreset ? { nitro: { preset: nitroPreset } } : {}),
+  nitro: { preset: nitroPreset },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this

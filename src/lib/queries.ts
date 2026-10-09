@@ -54,6 +54,8 @@ export const rideStateQuery = queryOptions({
   queryKey: ["ride-state", TOURNAMENT_ID],
   queryFn: () => getRideState(),
   staleTime: 30 * 1000,
+  retry: 2,
+  retryDelay: (attempt: number) => 400 * (attempt + 1),
 });
 
 export function driverRouteQuery(driver: Driver) {
