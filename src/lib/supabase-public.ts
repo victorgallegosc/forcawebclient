@@ -1,6 +1,7 @@
-// Publishable-key client for server-side ride reads/writes. Uses host env
-// (Vercel / Netlify): SUPABASE_URL + SUPABASE_PUBLISHABLE_KEY. No service role
-// key — tables are read-only for this key; writes go through security-definer RPCs.
+// Publishable-key client for server-side ride reads/writes.
+// Credentials come from the Vercel project env (SUPABASE_URL +
+// SUPABASE_PUBLISHABLE_KEY). No service role key — tables are read-only for
+// this key; writes go through security-definer RPCs.
 import { createClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
@@ -9,7 +10,7 @@ function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
 }
 
-/** True only for a real Supabase API host — not the app's own Netlify/Vercel URL. */
+/** True only for a real Supabase API host — not the app's own deploy URL. */
 function isUsableSupabaseUrl(value: string | undefined): value is string {
   if (!value) return false;
   try {
@@ -29,7 +30,7 @@ function resolveCredentials() {
     process.env["SUPABASE_PROJECT_ID"] ||
     process.env["VITE_SUPABASE_PROJECT_ID"];
 
-  // Prefer server env, then Vite env — but never the site origin mistaken for Supabase.
+  // Prefer server env, then Vite env — never the site origin.
   const urlFromEnv = [
     process.env["SUPABASE_URL"],
     process.env["VITE_SUPABASE_URL"],
@@ -44,11 +45,11 @@ function resolveCredentials() {
 
   if (!url || !key) {
     const missing = [
-      ...(!url ? ["SUPABASE_URL (must be https://<ref>.supabase.co)"] : []),
+      ...(!url ? ["SUPABASE_URL (https://<ref>.supabase.co)"] : []),
       ...(!key ? ["SUPABASE_PUBLISHABLE_KEY"] : []),
     ];
     throw new Error(
-      `Missing or invalid Supabase env: ${missing.join(", ")}. Copy the same values from Vercel into this host.`,
+      `Missing or invalid Supabase env on Vercel: ${missing.join(", ")}.`,
     );
   }
 

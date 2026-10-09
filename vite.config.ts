@@ -6,10 +6,12 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-// Let Nitro auto-detect the host (Vercel / Netlify / …). Forcing "netlify" broke
-// Vercel deploys that already have the correct SUPABASE_* env. Netlify CI sets
-// NITRO_PRESET=netlify in netlify.toml.
-const nitroPreset = process.env["NITRO_PRESET"];
+// Production host is Vercel (SUPABASE_* env lives there). Vercel sets VERCEL=1
+// during build; Nitro must use the vercel preset — the old hard-coded "netlify"
+// preset broke SSR/server functions on Vercel. Override with NITRO_PRESET if needed.
+const nitroPreset =
+  process.env["NITRO_PRESET"] ||
+  (process.env["VERCEL"] ? "vercel" : undefined);
 
 export default defineConfig({
   ...(nitroPreset ? { nitro: { preset: nitroPreset } } : {}),
