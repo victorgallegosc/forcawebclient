@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowRight, RotateCcw, Sparkles, Undo2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -39,9 +39,12 @@ export const Route = createFileRoute("/aventones")({
     ],
   }),
   loader: async ({ context }) => {
-    // Calendar is enough to render the rotation. Always try Supabase ride
-    // state (Vercel env), but never block the page if that call fails.
-    await context.queryClient.fetchQuery(scheduleQuery);
+    // Never hard-block Ride on a flaky scrape or DB blip. Prefer fresh
+    // schedule, fall back to cache; ride state is always best-effort.
+    await context.queryClient
+      .fetchQuery(scheduleQuery)
+      .catch(() => context.queryClient.ensureQueryData(scheduleQuery))
+      .catch(() => null);
     await context.queryClient.ensureQueryData(rideStateQuery).catch(() => null);
   },
   component: AventonesPage,
@@ -49,7 +52,7 @@ export const Route = createFileRoute("/aventones")({
     <LeagueRetryError
       title="Ride"
       description="No pudimos cargar los rides por ahora."
-      detail="No pudimos conectar con la base de rides. Vuelve a intentar en un momento."
+      detail="Revisa tu conexión y vuelve a intentar."
     />
   ),
 });
@@ -67,8 +70,9 @@ function timeAgo(iso: string) {
 
 function AventonesPage() {
   const queryClient = useQueryClient();
-  const schedule = useSuspenseQuery(scheduleQuery).data;
-  // Same pattern as Inicio: schedule is required; ride DB is best-effort.
+  // Soft queries: never suspend/crash the route if a request is slow or fails.
+  const scheduleQueryResult = useQuery(scheduleQuery);
+  const schedule = scheduleQueryResult.data;
   const rideState = useQuery(rideStateQuery);
   const adjustments = rideState.data?.adjustments ?? [];
   const log = rideState.data?.log ?? [];
@@ -81,7 +85,7 @@ function AventonesPage() {
 
   const fixtureDays = useMemo(() => {
     const days = new Set<string>();
-    for (const group of schedule.data) {
+    for (const group of schedule?.data ?? []) {
       for (const week of group.weeks) {
         for (const match of week.matches) {
           if (match.iso && (isUs(match.home) || isUs(match.away))) days.add(match.iso);
@@ -100,6 +104,28 @@ function AventonesPage() {
   const upcoming = rotation.days.filter((day) => day.day >= today);
   const past = rotation.days.filter((day) => day.day < today).reverse();
   const next = upcoming.find((day) => !day.cancelled);
+
+  if (!schedule && scheduleQueryResult.isPending) {
+    return (
+      <PageShell
+        eyebrow="Rol de rides"
+        title="Ride"
+        description="Cargando la rotación…"
+      >
+        <p className="text-sm text-muted-foreground">Un momento…</p>
+      </PageShell>
+    );
+  }
+
+  if (!schedule) {
+    return (
+      <LeagueRetryError
+        title="Ride"
+        description="No pudimos cargar los rides por ahora."
+        detail="Revisa tu conexión y vuelve a intentar."
+      />
+    );
+  }
 
   const run = useMutation({
     mutationFn: async (task: () => Promise<string | null | void>) => task(),
