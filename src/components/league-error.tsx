@@ -6,19 +6,18 @@ import { PageShell, Panel } from "@/components/app-shell";
 export function LeagueRetryError({
   title,
   description,
-  detail = "No contestó a tiempo. Casi siempre se arregla al volver a intentar.",
 }: {
   title: string;
   description: string;
-  /** Optional body copy — defaults to a generic retry hint (not league-specific). */
-  detail?: string;
 }) {
   const router = useRouter();
 
   return (
     <PageShell title={title} description={description}>
       <Panel interactive className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">{detail}</p>
+        <p className="text-sm text-muted-foreground">
+          La liga no contestó a tiempo. Casi siempre se arregla al volver a intentar.
+        </p>
         <button
           type="button"
           onClick={() => {

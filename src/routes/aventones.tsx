@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowRight, RotateCcw, Sparkles, Undo2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -39,20 +39,16 @@ export const Route = createFileRoute("/aventones")({
     ],
   }),
   loader: async ({ context }) => {
-    // Never hard-block Ride on a flaky scrape or DB blip. Prefer fresh
-    // schedule, fall back to cache; ride state is always best-effort.
-    await context.queryClient
-      .fetchQuery(scheduleQuery)
-      .catch(() => context.queryClient.ensureQueryData(scheduleQuery))
-      .catch(() => null);
-    await context.queryClient.ensureQueryData(rideStateQuery).catch(() => null);
+    await Promise.all([
+      context.queryClient.fetchQuery(scheduleQuery),
+      context.queryClient.ensureQueryData(rideStateQuery),
+    ]);
   },
   component: AventonesPage,
   errorComponent: () => (
     <LeagueRetryError
       title="Ride"
       description="No pudimos cargar los rides por ahora."
-      detail="Revisa tu conexión y vuelve a intentar."
     />
   ),
 });
@@ -70,12 +66,10 @@ function timeAgo(iso: string) {
 
 function AventonesPage() {
   const queryClient = useQueryClient();
-  // Soft queries: never suspend/crash the route if a request is slow or fails.
-  const scheduleQueryResult = useQuery(scheduleQuery);
-  const schedule = scheduleQueryResult.data;
-  const rideState = useQuery(rideStateQuery);
-  const adjustments = rideState.data?.adjustments ?? [];
-  const log = rideState.data?.log ?? [];
+  const schedule = useSuspenseQuery(scheduleQuery).data;
+  const rideState = useSuspenseQuery(rideStateQuery).data;
+  const adjustments = rideState.adjustments;
+  const log = rideState.log;
   const [message, setMessage] = useState<string | null>(null);
   const [changeDay, setChangeDay] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
@@ -85,7 +79,7 @@ function AventonesPage() {
 
   const fixtureDays = useMemo(() => {
     const days = new Set<string>();
-    for (const group of schedule?.data ?? []) {
+    for (const group of schedule.data) {
       for (const week of group.weeks) {
         for (const match of week.matches) {
           if (match.iso && (isUs(match.home) || isUs(match.away))) days.add(match.iso);
@@ -104,28 +98,6 @@ function AventonesPage() {
   const upcoming = rotation.days.filter((day) => day.day >= today);
   const past = rotation.days.filter((day) => day.day < today).reverse();
   const next = upcoming.find((day) => !day.cancelled);
-
-  if (!schedule && scheduleQueryResult.isPending) {
-    return (
-      <PageShell
-        eyebrow="Rol de rides"
-        title="Ride"
-        description="Cargando la rotación…"
-      >
-        <p className="text-sm text-muted-foreground">Un momento…</p>
-      </PageShell>
-    );
-  }
-
-  if (!schedule) {
-    return (
-      <LeagueRetryError
-        title="Ride"
-        description="No pudimos cargar los rides por ahora."
-        detail="Revisa tu conexión y vuelve a intentar."
-      />
-    );
-  }
 
   const run = useMutation({
     mutationFn: async (task: () => Promise<string | null | void>) => task(),
@@ -216,16 +188,6 @@ function AventonesPage() {
           ) : null}
         </div>
       </div>
-
-      {rideState.isError ? (
-        <p
-          role="status"
-          className="mt-6 animate-fade-in rounded-xl bg-secondary/60 px-4 py-3.5 text-sm text-muted-foreground"
-        >
-          Mostrando la rotación del calendario. Los cambios guardados en la base no
-          están disponibles ahora.
-        </p>
-      ) : null}
 
       {message ? (
         <p
