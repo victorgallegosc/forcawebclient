@@ -1,5 +1,6 @@
+# Optional / legacy. Production hosting is Vercel (see vercel.json + vite.config).
 [build]
-  command = "npm run build"
+  command = "NITRO_PRESET=netlify npm run build"
   publish = "dist"
   # Keep functions out of publish/dist — otherwise Netlify treats public/sw.js
   # (copied into dist/) as a serverless function and the deploy fails.

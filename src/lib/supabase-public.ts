@@ -1,6 +1,7 @@
-// Publishable-key client for server-side ride reads/writes. Uses the same
-// Supabase env as the rest of the app (set on Vercel). No service role key:
-// tables are read-only for this key; writes go through security-definer RPCs.
+// Publishable-key client for server-side ride reads/writes.
+// Same credential resolution as integrations/supabase/client.ts so Vercel
+// env (VITE_* baked at build + SUPABASE_* at runtime) keeps working.
+// No service role key — writes go through security-definer RPCs.
 import { createClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
@@ -10,10 +11,16 @@ function isNewSupabaseApiKey(value: string): boolean {
 }
 
 function resolveCredentials() {
-  const url = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
+  // Match the generated Supabase client: Vite build-time first, then runtime.
+  const url =
+    import.meta.env["VITE_SUPABASE_URL"] ||
+    process.env["SUPABASE_URL"] ||
+    process.env["VITE_SUPABASE_URL"];
   const key =
+    import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
     process.env["SUPABASE_PUBLISHABLE_KEY"] ||
-    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
+    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
+    process.env["SUPABASE_ANON_KEY"];
 
   if (!url || !key) {
     const missing = [
@@ -21,11 +28,11 @@ function resolveCredentials() {
       ...(!key ? ["SUPABASE_PUBLISHABLE_KEY"] : []),
     ];
     throw new Error(
-      `Missing Supabase environment variable(s): ${missing.join(", ")}. Set them on Vercel (or locally in .env).`,
+      `Missing Supabase environment variable(s): ${missing.join(", ")}. Connect Supabase in Lovable Cloud.`,
     );
   }
 
-  return { url, key };
+  return { url: String(url), key: String(key) };
 }
 
 function build() {
