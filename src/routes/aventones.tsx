@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { ArrowRight, RotateCcw, Sparkles, Undo2 } from "lucide-react";
+import { ArrowRight, RotateCcw, Sparkles, Undo2, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { PageShell, Panel, SectionLabel } from "@/components/app-shell";
