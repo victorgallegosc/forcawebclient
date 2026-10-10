@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft, Car, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -29,18 +29,16 @@ export const Route = createFileRoute("/ride/$day")({
     ],
   }),
   loader: async ({ context }) => {
-    await context.queryClient
-      .fetchQuery(scheduleQuery)
-      .catch(() => context.queryClient.ensureQueryData(scheduleQuery))
-      .catch(() => null);
-    await context.queryClient.ensureQueryData(rideStateQuery).catch(() => null);
+    await Promise.all([
+      context.queryClient.fetchQuery(scheduleQuery),
+      context.queryClient.ensureQueryData(rideStateQuery),
+    ]);
   },
   component: RideDetailPage,
   errorComponent: () => (
     <LeagueRetryError
       title="Ride"
       description="No pudimos cargar el detalle del ride."
-      detail="Revisa tu conexión y vuelve a intentar."
     />
   ),
 });
@@ -71,45 +69,19 @@ function findOurMatch(groups: GroupSchedule[], day: string): Match | null {
 function RideDetailPage() {
   const { day } = Route.useParams();
   const queryClient = useQueryClient();
-  const scheduleQueryResult = useQuery(scheduleQuery);
-  const schedule = scheduleQueryResult.data;
-  const rideState = useQuery(rideStateQuery);
-  const adjustments = rideState.data?.adjustments ?? [];
+  const schedule = useSuspenseQuery(scheduleQuery).data;
+  const rideState = useSuspenseQuery(rideStateQuery).data;
   const [message, setMessage] = useState<string | null>(null);
 
-  const fixtureDays = useMemo(
-    () => (schedule ? ourFixtureDays(schedule.data) : []),
-    [schedule],
-  );
+  const fixtureDays = useMemo(() => ourFixtureDays(schedule.data), [schedule.data]);
   const rotation = useMemo(
-    () => computeRotation(fixtureDays, adjustments),
-    [fixtureDays, adjustments],
+    () => computeRotation(fixtureDays, rideState.adjustments),
+    [fixtureDays, rideState.adjustments],
   );
   const rideDay = rotation.days.find((entry) => entry.day === day) ?? null;
-  const match = useMemo(
-    () => (schedule ? findOurMatch(schedule.data, day) : null),
-    [schedule, day],
-  );
+  const match = useMemo(() => findOurMatch(schedule.data, day), [schedule.data, day]);
   const driver = (rideDay?.actualDriver ?? rideDay?.driver) as Driver | null;
   const dueDriver = rideDay?.dueDriver ?? null;
-
-  if (!schedule && scheduleQueryResult.isPending) {
-    return (
-      <PageShell title="Ride" description="Cargando…">
-        <p className="text-sm text-muted-foreground">Un momento…</p>
-      </PageShell>
-    );
-  }
-
-  if (!schedule) {
-    return (
-      <LeagueRetryError
-        title="Ride"
-        description="No pudimos cargar el detalle del ride."
-        detail="Revisa tu conexión y vuelve a intentar."
-      />
-    );
-  }
 
   const run = useMutation({
     mutationFn: async (task: () => Promise<string | null | void>) => task(),
